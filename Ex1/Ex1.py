@@ -2,8 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def u_exact(x,t):
-    return np.sin(2*np.pi*(x-2*t))
+def u_exact(x, t):
+    return np.sin(2 * np.pi * (x - 2 * t))
 
 
 def main():
@@ -12,6 +12,7 @@ def main():
     err_l1 = np.zeros(n := len(mesh_sizes))
     err_l2 = np.zeros(n)
     err_linf = np.zeros(n)
+    numerical_solutions = []
 
     for i, N in enumerate(mesh_sizes):
         dx = 1 / N
@@ -25,6 +26,7 @@ def main():
         M[0, -1] = c
         for _ in range(int(tend / dt)):
             u = M @ u
+        numerical_solutions.append(u)
         err_l1[i] = np.sum(np.abs(u - u_exact(x, tend)))
         err_l2[i] = np.sqrt(np.sum((np.abs(u - u_exact(x, tend))) ** 2))
         err_linf[i] = np.max(np.abs(u - u_exact(x, tend)))
@@ -34,6 +36,11 @@ def main():
     print("Linf Error:", err_linf)
 
     # Plotting:
+    for i, N in enumerate(mesh_sizes):
+        plt.plot(np.linspace(0, 1, N), numerical_solutions[i], label=f"{N} mesh points")
+    plt.plot(x := np.linspace(0, 1, mesh_sizes[-1]), u_exact(x, tend), label="exact solution")
+    plt.legend()
+    plt.show()
     mesh_widths = 1 / mesh_sizes
     plt.loglog(mesh_widths, err_l1, label="$L^{1}$-Error")
     plt.loglog(mesh_widths, err_l2, label="$L^{2}$-Error")
