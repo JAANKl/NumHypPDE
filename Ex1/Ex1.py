@@ -27,17 +27,20 @@ def main():
         for _ in range(int(tend / dt)):
             u = M @ u
         numerical_solutions.append(u)
-        err_l1[i] = np.sum(np.abs(u - u_exact(x, tend)))
-        err_l2[i] = np.sqrt(np.sum((np.abs(u - u_exact(x, tend))) ** 2))
+        err_l1[i] = np.sum(np.abs(u - u_exact(x, tend)))*dx
+        err_l2[i] = np.sqrt(np.sum((np.abs(u - u_exact(x, tend))) ** 2)*dx)
         err_linf[i] = np.max(np.abs(u - u_exact(x, tend)))
 
     print("L1 Error:", err_l1)
     print("L2 Error:", err_l2)
     print("Linf Error:", err_linf)
-
+    
     # Plotting:
     for i, N in enumerate(mesh_sizes):
-        plt.plot(np.linspace(0, 1, N), numerical_solutions[i], label=f"{N} mesh points")
+        plt.scatter(np.linspace(0, 1, N), numerical_solutions[i], label=f"{N} mesh points", s=0.2)
+        
+    plt.xlabel("x")
+    plt.ylabel("u(x)")
     plt.plot(x := np.linspace(0, 1, mesh_sizes[-1]), u_exact(x, tend), label="exact solution")
     plt.legend()
     plt.show()
@@ -45,11 +48,16 @@ def main():
     plt.loglog(mesh_widths, err_l1, label="$L^{1}$-Error")
     plt.loglog(mesh_widths, err_l2, label="$L^{2}$-Error")
     plt.loglog(mesh_widths, err_linf, label="$L^{\infty}$-Error")
-    plt.loglog(mesh_widths, 10 * mesh_widths, label="$h^{1}$")
-    plt.loglog(mesh_widths, 10 * mesh_widths ** 0.5, label="$h^{0.5}$")
+    plt.loglog(mesh_widths, 10 * mesh_widths, label="$h^{1}$ (for comparison)")
+    plt.loglog(mesh_widths, 10 * mesh_widths ** 0.5, label="$h^{0.5}$ (for comparison)")
+    plt.xlabel("mesh width h")
+    plt.ylabel("error")
     plt.legend()
     plt.show()
 
+    print("L1 convergence rate:", np.polyfit(np.log(mesh_widths), np.log(err_l1), 1)[0])
+    print("L2 convergence rate:", np.polyfit(np.log(mesh_widths), np.log(err_l2), 1)[0])
+    print("Linf convergence rate:", np.polyfit(np.log(mesh_widths), np.log(err_linf), 1)[0])
 
 if __name__ == "__main__":
     main()
