@@ -31,9 +31,6 @@ def main():
         err_l2[i] = np.sqrt(np.sum((np.abs(u - u_exact(x, tend))) ** 2)*dx)
         err_linf[i] = np.max(np.abs(u - u_exact(x, tend)))
 
-    print("L1 Error:", err_l1)
-    print("L2 Error:", err_l2)
-    print("Linf Error:", err_linf)
     
     # Plotting:
     for i, N in enumerate(mesh_sizes):
@@ -55,9 +52,25 @@ def main():
     plt.legend()
     plt.show()
 
-    print("L1 convergence rate:", np.polyfit(np.log(mesh_widths), np.log(err_l1), 1)[0])
-    print("L2 convergence rate:", np.polyfit(np.log(mesh_widths), np.log(err_l2), 1)[0])
-    print("Linf convergence rate:", np.polyfit(np.log(mesh_widths), np.log(err_linf), 1)[0])
-
+    
+    print("L1 average convergence rate:", np.polyfit(np.log(mesh_widths), np.log(err_l1), 1)[0])
+    print("L2 average convergence rate:", np.polyfit(np.log(mesh_widths), np.log(err_l2), 1)[0])
+    print("Linf average convergence rate:", np.polyfit(np.log(mesh_widths), np.log(err_linf), 1)[0])
+    
+    
+    print(f"N={mesh_sizes[0]}")
+    print(f"L1 Error at N={mesh_sizes[0]}: {err_l1[0]}")
+    print(f"L2 Error  at N={mesh_sizes[0]}: {err_l2[0]}")
+    
+    print(f"Linf Error at N={mesh_sizes[0]}: {err_linf[0]}")
+    
+    for i, N in enumerate(mesh_sizes[1:]):
+        print(f"N={N}")
+        print(f"L1 Error at N={N}:", err_l1[i+1])
+        print(f"L2 Error  at N={N}:", err_l2[i+1])
+        print(f"Linf Error at N={N}:", err_linf[i+1])
+        print(f"L1 local convergence rate at N={N} :", np.polyfit(np.log(mesh_widths[i:i+2]), np.log(err_l1[i:i+2]), 1)[0])
+        print(f"L2 local convergence rate  at N={N}:", np.polyfit(np.log(mesh_widths[i:i+2]), np.log(err_l2[i:i+2]), 1)[0])
+        print(f"Linf local  convergence rate at N={N}:", np.polyfit(np.log(mesh_widths[i:i+2]), np.log(err_linf[i:i+2]), 1)[0])
 if __name__ == "__main__":
     main()
