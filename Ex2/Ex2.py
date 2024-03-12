@@ -72,5 +72,5 @@ def update(frame):
     return scat_FTBS, scat_LW, scat_exact
 
 
-ani = animation.FuncAnimation(fig=fig, func=update, frames=100, interval=100)
+ani = animation.FuncAnimation(fig=fig, func=update, frames=50, interval=100)
 plt.show()
