@@ -50,8 +50,7 @@ dx = 2 / N
 dt = 1 / (4 * N)  # <= 1/(2N)
 x = np.linspace(0, 2, N)
 # Initial values:
-u_0 = initial_values(x)
-u_GOD = u_0
+u_GOD = initial_values(x)
 t = 0
 while t < tend:
     u_GOD = time_step(u_GOD)
