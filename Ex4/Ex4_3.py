@@ -45,7 +45,7 @@ def time_step(u_GOD):
 
 
 tend = 1.5 / np.pi
-N = 100
+N = 200
 dx = 2 / N
 dt = 1 / (4 * N)  # <= 1/(2N)
 x = np.linspace(0, 2, N)
@@ -57,7 +57,8 @@ while t < tend:
     t += dt
 
 # Plotting
-plt.scatter(x, u_GOD, label="Godunov", s=0.5)
+# plt.scatter(x, u_GOD, label="Godunov", s=0.5)
+plt.plot(x, u_GOD, label="Godunov")
 plt.plot(x, u_exact(x), label="exact solution")
 plt.ylim((-2, 2))
 plt.legend()
