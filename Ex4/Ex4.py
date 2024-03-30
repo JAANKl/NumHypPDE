@@ -16,7 +16,7 @@ def main():
 
     for i, N in enumerate(mesh_sizes):
         dx = 1 / N
-        dt = 1 / (4 * N)  # <= 1/(2N)
+        dt = 1 / (4 * N)  # <= 1/(2N) for CFL condition
         c = 2 * dt / dx
         x = np.linspace(0, 1, N)
         # Initial values:
