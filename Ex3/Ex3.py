@@ -14,7 +14,7 @@ def f_prime(x_0, t, x):
 init_val = x
 
 
-x_0 = sc.newton(f, x0=init_val,fprime=f_prime, args=(t, x),tol=1e-16, maxiter=100)
+x_0 = sc.newton(f, x0=init_val,fprime=f_prime, args=(t, x),tol=1e-5, maxiter=100)
 plt.plot(x,np.sin(np.pi*x_0)+0.5, label=r"$t=\frac{0.5}{\pi}$")
 plt.xlabel("x")
 plt.ylabel("u(x,0.5/pi)")
@@ -28,7 +28,7 @@ no_prob = x<=0.2
 prob_is_left = np.logical_and(x <= x_s, x>1.0)
 prob_is_right = x > x_s
 init_val = 0.5*prob_is_left+1.5*prob_is_right+(0)*no_prob
-x_0 = sc.newton(f, x0=init_val,fprime=f_prime, args=(t, x),tol=1e-16, maxiter=100)
+x_0 = sc.newton(f, x0=init_val,fprime=f_prime, args=(t, x),tol=1e-5, maxiter=100)
 
     
 
