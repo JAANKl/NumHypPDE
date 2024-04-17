@@ -7,7 +7,7 @@ t = 0.5/np.pi
 
 def f(x_0, t, x):
     return x_0 + (np.sin(np.pi * x_0) +1/2)*t -x
-    
+        
 def f_prime(x_0, t, x):
     return 1+ np.pi*np.cos(np.pi*x_0)*t
 
