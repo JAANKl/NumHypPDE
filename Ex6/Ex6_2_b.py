@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.optimize as sc
 
+tend = 1.5 / np.pi
+
 
 def initial_values(x):
     return np.sin(np.pi * x) + 0.5
@@ -19,9 +21,6 @@ def g_prime(x_0, t, x):
     return 1 + np.pi * np.cos(np.pi * x_0) * t
 
 
-tend = 1.5 / np.pi
-
-
 def u_exact(x):
     t = tend
     x_s = 1 + 1 / 2 * t
@@ -34,7 +33,7 @@ def u_exact(x):
     return initial_values(x_0)
 
 
-mesh_sizes = np.array([20, 100, 200, 400, 800])
+mesh_sizes = np.array([40, 80, 160, 320, 640])
 err_l1 = np.zeros(n := len(mesh_sizes))
 err_l2 = np.zeros(n)
 err_linf = np.zeros(n)
@@ -48,72 +47,53 @@ def f(u):
     return u ** 2 / 2
 
 
-def godunov_flux_local(u_left, u_right):
-    return f(u_left)
-    # if u_left <= u_right:
-    #    return f(u_left)
-    # else:
-    #    return f(u_right)
+def f_prime(u):
+    return u
+
+
+def lax_wendroff_flux_local(u_left, u_right, tol=1e-7):
+    if np.linalg.norm(u_left - u_right) < tol:
+        a = f_prime(u_left)
+    else:
+        a = (f(u_right) - f(u_left)) / (u_right - u_left)
+    return (f(u_left) + f(u_right)) / 2 - a * dt / (2 * dx) * (f(u_right) - f(u_left))
 
 
 # takes in all values of u = (u_j^n)_j at time n and returns vector of fluxes (F_{j+1/2})_j
 
-def godunov_flux(u):
+def lax_wendroff_flux(u):
     # periodic boundary
     u_left = np.concatenate(([u[-1]], u))
     u_right = np.concatenate((u, [u[0]]))
 
-    return np.maximum(f(np.maximum(u_left, 0)), f(np.minimum(u_right, 0)))
-
-    """ implementation case by case, also works:
-    is_smaller = (u_left <= u_right)
-    is_bigger = (1-is_smaller)
-    
-    case_1 = is_smaller*(0 <= u_left)
-    cases_before = case_1
-    case_2 = is_smaller*(u_right <= 0)*(1-cases_before)
-    cases_before = np.logical_or(case_2, cases_before)
-    case_3 = (u_left <= 0)*(u_right >= 0)*(1-cases_before)
-    cases_before = np.logical_or(case_3, cases_before)
-    case_4 = (is_bigger)*(0 <= u_right)*(1-cases_before)
-    cases_before = np.logical_or(case_4, cases_before)
-    case_5 = (is_bigger)*(u_left <= 0)*(1-cases_before)
-    cases_before = np.logical_or(case_5, cases_before)
-    case_6 = 1-cases_before
-    
-    max_abs = np.maximum(np.abs(u_left), np.abs(u_right))
-    min_abs = np.minimum(np.abs(u_left), np.abs(u_right))
-    
-    return (case_1+case_2)*f(min_abs)+(case_4+case_5)*f(max_abs)+case_6*f(max_abs)
-    
-    """
+    return lax_wendroff_flux_local(u_left, u_right)
 
 
 for i, N in enumerate(mesh_sizes):
     dx = 2 / N
     # choosing dt according to CFL condition
-    dt = 2 / (4 * N)  # <= 1/(2N)
+    dt = 2 / (8 * N)  # <= 1/(2N)
 
     x = np.linspace(0, 2, N)
     # Initial values:
     u = initial_values(x)
     for _ in range(int(tend / dt)):
-        F_j_minus = godunov_flux(u)
+        F_j_minus = lax_wendroff_flux(u)
         # print(F_j_minus)
         F_j_diff = F_j_minus[1:] - F_j_minus[:-1]
         u = u - dt / dx * F_j_diff
     numerical_solutions.append(u)
-    err_l1[i] = np.sum(np.abs(u - u_exact(x))) * dx
-    err_l2[i] = np.sqrt(np.sum((np.abs(u - u_exact(x))) ** 2) * dx)
-    err_linf[i] = np.max(np.abs(u - u_exact(x)))
+    err_l1[i] = np.sum(np.abs(u[:int(N/8*3)] - u_exact(x)[:int(N/8*3)])) * dx
+    err_l2[i] = np.sqrt(np.sum((np.abs(u[:int(N/8*3)] - u_exact(x)[:int(N/8*3)])) ** 2) * dx)
+    err_linf[i] = np.max(np.abs(u[:int(N/8*3)] - u_exact(x)[:int(N/8*3)]))
 
 # Plotting:
 for i, N in enumerate(mesh_sizes):
-    plt.scatter(np.linspace(0, 2, N), numerical_solutions[i], label=f"{N} mesh points", s=1)
+    plt.scatter(np.linspace(0, 0.75, int(N/8*3)), numerical_solutions[i][:int(N/8*3)], label=f"{N} mesh points", s=1)
 
 plt.xlabel("x")
 plt.ylabel("u(x)")
-plt.plot(x := np.linspace(0, 2, mesh_sizes[-1]), u_exact(x), label="exact solution")
+plt.plot(x := np.linspace(0, 0.75, int(mesh_sizes[-1]/8*3)), u_exact(x), label="exact solution")
 plt.legend()
 plt.show()
 mesh_widths = 1 / mesh_sizes
@@ -157,10 +137,12 @@ for i, N in enumerate(mesh_sizes[1:]):
 
 # print only one numerical solution with exact solution
 
-index = 2
-plt.plot(np.linspace(0, 2, mesh_sizes[index]), numerical_solutions[index], '-',
-         label=f"{mesh_sizes[index]} mesh points")
-plt.plot(x := np.linspace(0, 2, mesh_sizes[-1]), u_exact(x), label="exact solution")
+index = 3
+N = mesh_sizes[index]
+plt.plot(np.linspace(0, 0.75, int(N/8*3)), numerical_solutions[index][:int(N/8*3)], '-',
+         label=f"{N} mesh points")
+plt.plot(x := np.linspace(0, 0.75, int(mesh_sizes[-1]/8*3)), u_exact(x)[:int(mesh_sizes[-1]/8*3)], label="exact solution")
 plt.xlabel("x")
 plt.ylabel("u(x)")
 plt.legend()
+plt.show()

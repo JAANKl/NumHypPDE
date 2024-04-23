@@ -10,8 +10,10 @@ def initial_values(x):
 def f(x):
     return (x ** 2) / 2
 
+
 def f_prime(x):
     return x
+
 
 def g(x_0, t, x):
     return x_0 + (np.sin(np.pi * x_0) + 1 / 2) * t - x
@@ -20,79 +22,87 @@ def g(x_0, t, x):
 def g_prime(x_0, t, x):
     return 1 + np.pi * np.cos(np.pi * x_0) * t
 
-tend = 0.5/np.pi
+
+tend = 0.5 / np.pi
+
 
 def u_exact(x):
-    
     t = tend
-    x_s = 1+1/2*t
-    
-    no_prob = x<=0.2
-    prob_is_left = np.logical_and(x <= x_s, x>1.0)
+    x_s = 1 + 1 / 2 * t
+
+    no_prob = x <= 0.2
+    prob_is_left = np.logical_and(x <= x_s, x > 1.0)
     prob_is_right = x > x_s
-    init_val = 0.5*prob_is_left+1.5*prob_is_right+(0)*no_prob
-    x_0 = sc.newton(g, x0=init_val,fprime=g_prime, args=(t, x),tol=1e-5, maxiter=100)
+    init_val = 0.5 * prob_is_left + 1.5 * prob_is_right + (0) * no_prob
+    x_0 = sc.newton(g, x0=init_val, fprime=g_prime, args=(t, x), tol=1e-5, maxiter=100)
     return initial_values(x_0)
 
 
-#number of decimals for reporting values
+# number of decimals for reporting values
 precision = 4
 
-#takes in all values of u = (u_j^n)_j at time n and returns vector of fluxes (F_{j+1/2})_j
+
+# takes in all values of u = (u_j^n)_j at time n and returns vector of fluxes (F_{j+1/2})_j
 
 def godunov_flux(u, dx, dt):
-    #periodic boundary
+    # periodic boundary
     u_left = np.concatenate(([u[-1]], u))
-    u_right =np.concatenate((u, [u[0]]))
-    
+    u_right = np.concatenate((u, [u[0]]))
+
     return np.maximum(f(np.maximum(u_left, 0)), f(np.minimum(u_right, 0)))
 
-def roe_flux(u, dx, dt):
-    #periodic boundary
-    u_left = np.concatenate(([u[-1]], u))
-    u_right =np.concatenate((u, [u[0]]))
 
-    is_equal = (u_left==u_right)
+def roe_flux(u, dx, dt):
+    # periodic boundary
+    u_left = np.concatenate(([u[-1]], u))
+    u_right = np.concatenate((u, [u[0]]))
+
+    is_equal = (u_left == u_right)
     is_different = np.logical_not(is_equal)
-    #avoid division by zero, if equal replace by f_prime(U-J^n)
+    # avoid division by zero, if equal replace by f_prime(U-J^n)
 
     A_j = np.zeros_like(u_left)
-    A_j[is_different] = (f(u_right)-f(u_left))[is_different]/(u_right-u_left)[is_different]
+    A_j[is_different] = (f(u_right) - f(u_left))[is_different] / (u_right - u_left)[is_different]
     A_j[is_equal] = f_prime(u_left)[is_equal]
 
-    #check if A_j is correct for Burger's equation
-    assert np.allclose(A_j, (u_right+u_left)/2)
+    # check if A_j is correct for Burger's equation
+    assert np.allclose(A_j, (u_right + u_left) / 2)
 
-    return (A_j >= 0)*f(u_left)+(A_j < 0)*f(u_right)
+    return (A_j >= 0) * f(u_left) + (A_j < 0) * f(u_right)
+
 
 def lax_friedrichs_flux(u, dx, dt):
-    #periodic boundary
+    # periodic boundary
     u_left = np.concatenate(([u[-1]], u))
-    u_right =np.concatenate((u, [u[0]]))
-    
-    return 0.5*(f(u_left)+f(u_right))-0.5*dx/(dt)*(u_right-u_left)
+    u_right = np.concatenate((u, [u[0]]))
+
+    return 0.5 * (f(u_left) + f(u_right)) - 0.5 * dx / (dt) * (u_right - u_left)
+
 
 def rusanov(u, dx, dt):
-    #periodic boundary
+    # periodic boundary
     u_left = np.concatenate(([u[-1]], u))
-    u_right =np.concatenate((u, [u[0]]))
-    
-    return 0.5*(f(u_left)+f(u_right))-np.maximum(np.abs(f_prime(u_left)), np.abs(f_prime(u_right)))*(u_right-u_left)
+    u_right = np.concatenate((u, [u[0]]))
+
+    return 0.5 * (f(u_left) + f(u_right)) - np.maximum(np.abs(f_prime(u_left)), np.abs(f_prime(u_right))) * (
+                u_right - u_left)
+
 
 def enquist_osher_flux(u, dx, dt):
-    #works as long as f has a unique minimum at 0
-    #periodic boundary
+    # works as long as f has a unique minimum at 0
+    # periodic boundary
     u_left = np.concatenate(([u[-1]], u))
-    u_right =np.concatenate((u, [u[0]]))
-    
-    return f(np.maximum(u_left, 0))+f(np.minimum(u_right, 0))-f(0)
+    u_right = np.concatenate((u, [u[0]]))
+
+    return f(np.maximum(u_left, 0)) + f(np.minimum(u_right, 0)) - f(0)
 
 
 def get_dt_by_cfl(u, dx):
-    return dx/(2*np.max(np.abs(f_prime(u))))
+    return dx / (2 * np.max(np.abs(f_prime(u))))
+
 
 def latex_out(mesh_sizes, err_l1, err_l2, err_linf, rates_l1, rates_l2, rates_linf, precision=precision):
-    #Example output:
+    # Example output:
     """
     40 & 0.389 & - & 0.439 & - & 0.633 & - \\ 
     \hline
@@ -104,35 +114,35 @@ def latex_out(mesh_sizes, err_l1, err_l2, err_linf, rates_l1, rates_l2, rates_li
     \hline
     640 & 0.038 & 0.952 & 0.042 & 0.955 &  0.060 & 0.960 \\
     """
-    #first line
+    # first line
     N = mesh_sizes[0]
     i = 0
-    #rounding errors
+    # rounding errors
     err_l1 = np.round(err_l1, precision)
     err_l2 = np.round(err_l2, precision)
     err_linf = np.round(err_linf, precision)
 
-
-    print(f"{N} & {err_l1[0]} & - & {err_l2[0]} & - & {err_linf[0]} & - \\\\")    
+    print(f"{N} & {err_l1[0]} & - & {err_l2[0]} & - & {err_linf[0]} & - \\\\")
     print(r"\hline")
 
     for i, N in enumerate(mesh_sizes[1:]):
-        print(f"{N} & {err_l1[i+1]} & {rates_l1[i]} & {err_l2[i+1]} & {rates_l2[i]} & {err_linf[i+1]} & {rates_linf[i]} \\\\")
+        print(
+            f"{N} & {err_l1[i + 1]} & {rates_l1[i]} & {err_l2[i + 1]} & {rates_l2[i]} & {err_linf[i + 1]} & {rates_linf[i]} \\\\")
         print(r"\hline")
 
-    
+
 mesh_sizes = np.array([40, 80, 160, 320, 640])
 err_l1 = np.zeros(n := len(mesh_sizes))
 err_l2 = np.zeros(n)
 err_linf = np.zeros(n)
 numerical_solutions = []
 
-#implement finite volume method
+# implement finite volume method
 fluxes = [roe_flux, lax_friedrichs_flux, rusanov, enquist_osher_flux]
 nr_figures = len(fluxes)
-n_best = 4 #plot n_best against exact solution for each flux
+n_best = 4  # plot n_best against exact solution for each flux
 
-fig, axs = plt.subplots(nr_figures, 3, figsize=(7*3, 7*nr_figures))
+fig, axs = plt.subplots(nr_figures, 3, figsize=(7 * 3, 7 * nr_figures))
 for current_flux_nr, flux in enumerate(fluxes):
     print(f"Flux: {flux.__name__}")
     numerical_solutions.append([])
@@ -149,13 +159,13 @@ for current_flux_nr, flux in enumerate(fluxes):
         x = np.linspace(0, 2, N)
         # Initial values:
         u = initial_values(x)
-        #choosing dt according to CFL condition
+        # choosing dt according to CFL condition
         dt = get_dt_by_cfl(u, dx)
         for _ in range(int(tend / dt)):
             F_j_minus = flux(u, dx, dt)
-            #print(F_j_minus)
-            F_j_diff = F_j_minus[1:]-F_j_minus[:-1]
-            u = u - dt/dx*F_j_diff
+            # print(F_j_minus)
+            F_j_diff = F_j_minus[1:] - F_j_minus[:-1]
+            u = u - dt / dx * F_j_diff
         numerical_solutions[current_flux_nr].append(u)
         err_l1[i] = np.sum(np.abs(u - u_exact(x))) * dx
         err_l2[i] = np.sqrt(np.sum((np.abs(u - u_exact(x))) ** 2) * dx)
@@ -166,8 +176,9 @@ for current_flux_nr, flux in enumerate(fluxes):
         ax_plot.scatter(np.linspace(0, 2, N), numerical_solutions[current_flux_nr][i], label=f"{N} mesh points", s=1.5)
 
     n_best_numerical = numerical_solutions[current_flux_nr][-n_best]
-    ax_n_best_numerical.plot(np.linspace(0, 2, mesh_sizes[-n_best]), n_best_numerical, label=f"{mesh_sizes[-n_best]} mesh points")
-    #plot exact
+    ax_n_best_numerical.plot(np.linspace(0, 2, mesh_sizes[-n_best]), n_best_numerical,
+                             label=f"{mesh_sizes[-n_best]} mesh points")
+    # plot exact
     ax_n_best_numerical.plot(x := np.linspace(0, 2, mesh_sizes[-n_best]), u_exact(x), label="exact solution")
     ax_n_best_numerical.legend()
 
@@ -179,8 +190,8 @@ for current_flux_nr, flux in enumerate(fluxes):
     ax_rates.loglog(mesh_widths, err_l1, label=r"$L^{1}$-Error")
     ax_rates.loglog(mesh_widths, err_l2, label=r"$L^{2}$-Error")
     ax_rates.loglog(mesh_widths, err_linf, label=r"$L^{\infty}$-Error")
-    ax_rates.set_xlabel("mesh width h") 
-    ax_rates.set_ylabel("error") 
+    ax_rates.set_xlabel("mesh width h")
+    ax_rates.set_ylabel("error")
     ax_rates.legend()
     ax_rates.loglog(mesh_widths, 10 * mesh_widths, label=r"$h^{1}$ (for comparison)")
     ax_rates.loglog(mesh_widths, 10 * mesh_widths ** 0.5, label=r"$h^{0.5}$ (for comparison)")
@@ -220,4 +231,3 @@ for current_flux_nr, flux in enumerate(fluxes):
 
 fig.tight_layout()
 plt.show()
-
