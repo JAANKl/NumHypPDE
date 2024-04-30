@@ -27,18 +27,13 @@ numerical_solutions = []
 precision = 4
 
 
-def beam_warming_flux_local(u_left, u_right):
+def beam_warming_flux_diff(u):
+    flux_diff = np.zeros(len(u) - 1)  # Adjust the length of fh
     a = 1
-    return (3*f(u_left) - f(u_right)) / 2 - a * dt / (2 * dx) * (f(u_right) - f(u_left))
-
-# takes in all values of u = (u_j^n)_j at time n and returns vector of fluxes (F_{j+1/2})_j
-
-def beam_warming_flux(u):
-    # boundary
-    u_left = np.concatenate(([u[0]], u))
-    u_right = np.concatenate((u, [u[-1]]))
-
-    return beam_warming_flux_local(u_left, u_right)
+    flux_diff[2:] = a * (3 * u[2:-1] - 4 * u[1:-2] + u[:-3])/2 + a ** 2 / 2 * dt/dx * (u[2:-1] - 2 * u[1:-2] + u[:-3])
+    flux_diff[0] = flux_diff[2]
+    flux_diff[1] = flux_diff[2]
+    return flux_diff[1:]
 
 
 for i, N in enumerate(mesh_sizes):
@@ -50,9 +45,10 @@ for i, N in enumerate(mesh_sizes):
     # Initial values:
     u = initial_values(x)
     for _ in range(int(tend / dt)):
-        F_j = beam_warming_flux(u)
-        F_j_diff = F_j[1:] - F_j[:-1]
-        u = u - dt / dx * F_j_diff
+        F_j_diff = beam_warming_flux_diff(u)
+        u[1:-1] = u[1:-1] - dt / dx * F_j_diff
+        u[0] = u[1]
+        u[-1] = u[-2]
     numerical_solutions.append(u)
     err_l1[i] = np.sum(np.abs(u - u_exact(x))) * dx
     err_l2[i] = np.sqrt(np.sum((np.abs(u - u_exact(x))) ** 2) * dx)
