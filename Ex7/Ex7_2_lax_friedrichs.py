@@ -1,11 +1,26 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-tend = 1
+tend = 1.
 
 
 def initial_values(x):
     return -np.ones(N) + 2 * (x > 0)
+
+def initial_values_average(x, dx):
+    left = x<= -dx/2
+    middle = (x > -dx/2)*(x<=dx/2)
+    right = (x>dx/2)
+
+    return (-1)*left+(2*x)/dx*middle+1*right
+
+
+def average(x, func, dx):
+    #1/dx*(dx/2*func(x-dx)+dx/2*func(x))
+    #midpoint rule
+    #(func(x-dx/2)+func(x+dx/2))/2
+    #left point rule
+    return 1/dx*(dx/2*func(x-dx)+dx/2*func(x))
 
 
 def f(x):
@@ -17,7 +32,7 @@ def u_exact(x):
     return initial_values(x - t)
 
 
-mesh_sizes = np.array([100])
+mesh_sizes = np.array([101])
 err_l1 = np.zeros(n := len(mesh_sizes))
 err_l2 = np.zeros(n)
 err_linf = np.zeros(n)
@@ -74,7 +89,7 @@ for i, N in enumerate(mesh_sizes):
 
     x = np.linspace(-5, 5, N)
     # Initial values:
-    u = initial_values(x)
+    u = initial_values_average(x, dx)
     for _ in range(int(tend / dt)):
         u_plushalf_minus_values = u_plushalf_minus(u, dx)
         u_plushalf_plus_values = u_plushalf_plus(u, dx)
