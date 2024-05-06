@@ -2,6 +2,35 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.optimize as sc
 
+def latex_out(mesh_sizes, err_l1, err_l2, err_linf, rates_l1, rates_l2, rates_linf, precision=3):
+    # Example output:
+    """
+    40 & 0.389 & - & 0.439 & - & 0.633 & - \\ 
+    \hline
+    80 & 0.244 & 0.676 & 0.274 & 0.680 & 0.394  & 0.686\\
+    \hline
+    160 & 0.137 &  0.826 & 0.154 & 0.829 & 0.221 & 0.835\\
+    \hline
+    320 & 0.073 & 0.909 &  0.082 & 0.912 & 0.117  & 0.919\\
+    \hline
+    640 & 0.038 & 0.952 & 0.042 & 0.955 &  0.060 & 0.960 \\
+    """
+    # first line
+    N = mesh_sizes[0]
+    i = 0
+    # rounding errors
+    err_l1 = np.round(err_l1, precision)
+    err_l2 = np.round(err_l2, precision)
+    err_linf = np.round(err_linf, precision)
+
+    print(f"{N} & {err_l1[0]} & - & {err_l2[0]} & - & {err_linf[0]} & - \\\\")
+    print(r"\hline")
+
+    for i, N in enumerate(mesh_sizes[1:]):
+        print(
+            f"{N} & {err_l1[i + 1]} & {rates_l1[i]} & {err_l2[i + 1]} & {rates_l2[i]} & {err_linf[i + 1]} & {rates_linf[i]} \\\\")
+        print(r"\hline")
+
 for tend in [0.5 / np.pi, 1.5 / np.pi]:
     def initial_values(x):
         return np.sin(np.pi * x) + 0.5
@@ -132,7 +161,8 @@ for tend in [0.5 / np.pi, 1.5 / np.pi]:
         print(f"L1 local convergence rate at N={N} :", rate_l1)
         print(f"L2 local convergence rate  at N={N}:", rate_l2)
         print(f"Linf local  convergence rate at N={N}:", rate_linf)
-
+    
+    latex_out(mesh_sizes,  err_l1, err_l2, err_linf, rates_l1, rates_l2, rates_linf)
     # print only one numerical solution with exact solution
 
     index = 3
