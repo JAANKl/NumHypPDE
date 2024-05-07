@@ -5,7 +5,6 @@ tend = 1.
 
 
 def initial_values(x):
-    # return -np.ones_like(x) + 2 * (x > 0)
     return np.sin(2*np.pi*x)
 
 
@@ -22,7 +21,7 @@ def u_exact(x):
     return initial_values(x - t)
 
 
-mesh_sizes = np.array([400])
+mesh_sizes = np.array([10, 40, 80, 160, 320, 640, 1280])
 err_l1 = np.zeros(n := len(mesh_sizes))
 err_l2 = np.zeros(n)
 err_linf = np.zeros(n)
@@ -91,10 +90,11 @@ for i, N in enumerate(mesh_sizes):
 # print only one numerical solution with exact solution
 
 index = 0
-plt.plot(np.linspace(0, 1, mesh_sizes[index]+2), numerical_solutions[index], '-',
-         label=f"{mesh_sizes[index]} mesh points")
-plt.plot(x := np.linspace(0, 1, mesh_sizes[-1]), u_exact(x), label="exact solution")
-plt.xlabel("x")
-plt.ylabel("u(x)")
+for index, mesh_size in enumerate(mesh_sizes):
+    plt.plot(np.linspace(0, 1, mesh_size+2), numerical_solutions[index], '-',
+             label=f"{mesh_sizes[index]} mesh points", linewidth=0.5)
+    plt.xlabel("x")
+    plt.ylabel("u(x)")
+plt.plot(x := np.linspace(0, 1, mesh_sizes[-1]), u_exact(x), label="exact solution", linewidth=0.5)
 plt.legend()
 plt.show()
