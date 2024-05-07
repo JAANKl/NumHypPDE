@@ -5,24 +5,8 @@ tend = 1.
 
 
 def initial_values(x):
-    return -np.ones(N) + 2 * (x > 0)
-    # return np.sin(2*np.pi*x)
-
-
-def initial_values_average(x, dx):
-    left = x <= -dx / 2
-    middle = (x > -dx / 2) * (x <= dx / 2)
-    right = (x > dx / 2)
-
-    return (-1) * left + (2 * x) / dx * middle + 1 * right
-
-
-def average(x, func, dx):
-    # 1/dx*(dx/2*func(x-dx)+dx/2*func(x))
-    # midpoint rule
-    # (func(x-dx/2)+func(x+dx/2))/2
-    # left point rule
-    return 1 / dx * (dx / 2 * func(x - dx) + dx / 2 * func(x))
+    # return -np.ones_like(x) + 2 * (x > 0)
+    return np.sin(2*np.pi*x)
 
 
 def f(x):
@@ -38,7 +22,7 @@ def u_exact(x):
     return initial_values(x - t)
 
 
-mesh_sizes = np.array([101])
+mesh_sizes = np.array([400])
 err_l1 = np.zeros(n := len(mesh_sizes))
 err_l2 = np.zeros(n)
 err_linf = np.zeros(n)
@@ -62,55 +46,42 @@ def minmod(a):
         return 0
 
 
-def sigma_j(u_j_minus, u_j, u_j_plus, dx):
-    return minmod(np.array([(u_j_plus - u_j) / dx, (u_j - u_j_minus) / dx]))
-
-
 def sigma(u, dx):
+    du = np.diff(u)
     # boundary
-    u_left = np.concatenate(([u[0]], u[:-1]))
-    u_middle = u
-    u_right = np.concatenate((u[1:], [u[-1]]))
-
-    return np.array(
-        [sigma_j(u_j_minus, u_j, u_j_plus, dx) for u_j_minus, u_j, u_j_plus in zip(u_left, u_middle, u_right)])
+    return minmod(np.array([du / dx, np.roll(du,1)/dx]))
 
 
-def u_plushalf_minus(u, dx):
+def u_minus(u, dx):
     # vector containing u_{j+1/2}^{-} for all j
-    # boundary
-    u_left = u[:-1]
-    return u_left + sigma(u_left, dx) * dx / 2
+    return u + sigma(u, dx) * dx / 2
 
 
-def u_plushalf_plus(u, dx):
+def u_plus(u, dx):
     # vector containing u_{j+1/2}^{+} for all j
-    # truncating by one element
-    # u_right = np.concatenate((u[1:], [u[-1]]))
-    u_right = u[1:]
-    sigma_middle = sigma(u, dx)
-    sigma_right = sigma_middle[1:]
-    # sigma_right = np.concatenate((sigma_middle[1:], [sigma_middle[-1]]))
-
-    return u_right - sigma_right * dx / 2
+    return u - sigma(u, dx) * dx / 2
 
 
 for i, N in enumerate(mesh_sizes):
-    dx = 10 / N
+    dx = 1 / N
     # choosing dt according to CFL condition
-    dt = 10 / (20 * N)  # <= 1/(2N)
+    dt = 1 / (2 * N)  # <= 1/(2N)
 
-    x = np.linspace(-5, 5, N)
+    x = np.linspace(0, 1, N+2)
     # Initial values:
-    u = initial_values_average(x, dx)
+    # u = initial_values_average(x, dx)
+    u = initial_values(x)
     for _ in range(int(tend / dt)):
-        u_plushalf_minus_values = u_plushalf_minus(u, dx)
-        u_plushalf_plus_values = u_plushalf_plus(u, dx)
-        F_j = rusanov_flux(u_plushalf_minus_values, u_plushalf_plus_values, dx, dt)
+        u[0] = u[-2]  # Apply periodic boundary conditions
+        u[-1] = u[1]
+        u_star = u
+        u_minus_values = u_minus(u, dx)[:-1]
+        u_plus_values = u_plus(u, dx)[1:]
+        F_j = rusanov_flux(u_minus_values, u_plus_values, dx, dt)
         F_j_diff = F_j[1:] - F_j[:-1]
         u[1:-1] = u[1:-1] - dt / dx * F_j_diff
-        u[0] = u[1]
-        u[-1] = u[-2]
+        u_star[1:-1] = u[1:-1] - dt / dx * F_j_diff
+        u[1:-1] = (u_star[1:-1] + u[1:-1])/2
 
     numerical_solutions.append(u)
     err_l1[i] = np.sum(np.abs(u - u_exact(x))) * dx
@@ -120,9 +91,9 @@ for i, N in enumerate(mesh_sizes):
 # print only one numerical solution with exact solution
 
 index = 0
-plt.plot(np.linspace(-5, 5, mesh_sizes[index]), numerical_solutions[index], '-',
+plt.plot(np.linspace(0, 1, mesh_sizes[index]+2), numerical_solutions[index], '-',
          label=f"{mesh_sizes[index]} mesh points")
-plt.plot(x := np.linspace(-5, 5, mesh_sizes[-1]), u_exact(x), label="exact solution")
+plt.plot(x := np.linspace(0, 1, mesh_sizes[-1]), u_exact(x), label="exact solution")
 plt.xlabel("x")
 plt.ylabel("u(x)")
 plt.legend()
