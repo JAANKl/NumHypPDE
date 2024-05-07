@@ -1,11 +1,17 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy import integrate
 
-tend = 1.
+
+def init(dx, x):
+    u0_ = np.zeros(len(x))
+    for j in range(len(x)):
+        u0_[j] = 1 / dx * integrate.quad(lambda y: np.sin(2 * np.pi * y), x[j] - 0.5 * dx, x[j] + 0.5 * dx)[0]
+    return u0_
 
 
 def initial_values(x):
-    return np.sin(2*np.pi*x)
+    return np.sin(2 * np.pi * x)
 
 
 def f(x):
@@ -21,34 +27,31 @@ def u_exact(x):
     return initial_values(x - t)
 
 
-mesh_sizes = np.array([10, 40, 80, 160, 320, 640, 1280])
-err_l1 = np.zeros(n := len(mesh_sizes))
-err_l2 = np.zeros(n)
-err_linf = np.zeros(n)
-numerical_solutions = []
-
-# number of decimals for reporting values
-precision = 4
-
-
 # takes in all values of u = (u_j^n)_j at time n and returns vector of fluxes (F_{j+1/2})_j
 
 def rusanov_flux(u_left, u_right, dx, dt):
-    return (f(u_left) + f(u_right)) / 2 - np.max([np.abs(f_prime(u_left)), np.abs(f_prime(u_right))]) / 2 * (u_right - u_left)
+    return (f(u_left) + f(u_right)) / 2 - np.max([np.abs(f_prime(u_left)), np.abs(f_prime(u_right))]) / 2 * (
+                u_right - u_left)
 
-# TODO: I think I am using this incorrectly
-def minmod(a):
-    # if not all entries have the same sign, return 0
-    if np.all(a > 0) or np.all(a < 0):
-        return np.min(np.abs(a))
-    else:
-        return 0
 
+def vectorized_minmod(a, b):
+    # Create a condition where a and b have opposite signs (or either is zero)
+    mask = a * b <= 0
+    # Where this condition is true, we return 0
+    result = np.where(mask, 0, np.where(np.abs(a) < np.abs(b), a, b))
+    return result
+
+
+# def sigma(u, dx):
+#     du = np.diff(u)
+#     # boundary
+#     sigma_inside = vectorized_minmod(du[1:], du[:-1])/dx
+#     return np.concatenate([[sigma_inside[-1]], sigma_inside, [sigma_inside[0]]])
 
 def sigma(u, dx):
-    du = np.diff(u)
+    du = np.concatenate([np.diff(u), [0]])
     # boundary
-    return minmod(np.array([du / dx, np.roll(du,1)/dx]))
+    return vectorized_minmod(du / dx, np.roll(du, 1) / dx)
 
 
 def u_minus(u, dx):
@@ -61,6 +64,15 @@ def u_plus(u, dx):
     return u - sigma(u, dx) * dx / 2
 
 
+tend = 1.
+mesh_sizes = np.array([40, 80, 160, 320, 640, 1280])
+err_l1 = np.zeros(n := len(mesh_sizes))
+err_l2 = np.zeros(n)
+err_linf = np.zeros(n)
+numerical_solutions = []
+
+# number of decimals for reporting values
+precision = 4
 for i, N in enumerate(mesh_sizes):
     dx = 1 / N
     # choosing dt according to CFL condition
@@ -69,7 +81,8 @@ for i, N in enumerate(mesh_sizes):
     x = np.linspace(0, 1, N)
     # Initial values:
     # u = initial_values_average(x, dx)
-    u = initial_values(x)
+    # u = initial_values(x)
+    u = init(dx, x)
     u = np.concatenate([[u[-1]], u, [u[0]]])
     for _ in range(int(tend / dt)):
         u[0] = u[-2]  # Apply periodic boundary conditions
@@ -79,9 +92,13 @@ for i, N in enumerate(mesh_sizes):
         u_plus_values = u_plus(u, dx)[1:]
         F_j = rusanov_flux(u_minus_values, u_plus_values, dx, dt)
         F_j_diff = F_j[1:] - F_j[:-1]
-        u[1:-1] = u[1:-1] - dt / dx * F_j_diff
         u_star[1:-1] = u[1:-1] - dt / dx * F_j_diff
-        u[1:-1] = (u_star[1:-1] + u[1:-1])/2
+        u_minus_values = u_minus(u_star, dx)[:-1]
+        u_plus_values = u_plus(u_star, dx)[1:]
+        F_j = rusanov_flux(u_minus_values, u_plus_values, dx, dt)
+        F_j_diff = F_j[1:] - F_j[:-1]
+        u_star[1:-1] = u_star[1:-1] - dt / dx * F_j_diff
+        u[1:-1] = (u_star[1:-1] + u[1:-1]) / 2
 
     u = u[1:-1]
 
@@ -108,6 +125,7 @@ plt.loglog(mesh_widths, err_l2, label="$L^{2}$-Error")
 plt.loglog(mesh_widths, err_linf, label="$L^{\infty}$-Error")
 plt.loglog(mesh_widths, 10 * mesh_widths, label="$h^{1}$ (for comparison)")
 plt.loglog(mesh_widths, 10 * mesh_widths ** 0.5, label="$h^{0.5}$ (for comparison)")
+plt.loglog(mesh_widths, 10 * mesh_widths ** 2, label="$h^{2}$ (for comparison)")
 plt.xlabel("mesh width h")
 plt.ylabel("error")
 plt.legend()
