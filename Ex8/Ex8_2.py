@@ -36,7 +36,7 @@ precision = 4
 def rusanov_flux(u_left, u_right, dx, dt):
     return (f(u_left) + f(u_right)) / 2 - np.max([np.abs(f_prime(u_left)), np.abs(f_prime(u_right))]) / 2 * (u_right - u_left)
 
-
+# TODO: I think I am using this incorrectly
 def minmod(a):
     # if not all entries have the same sign, return 0
     if np.all(a > 0) or np.all(a < 0):
