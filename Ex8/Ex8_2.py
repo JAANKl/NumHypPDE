@@ -66,10 +66,11 @@ for i, N in enumerate(mesh_sizes):
     # choosing dt according to CFL condition
     dt = 1 / (2 * N)  # <= 1/(2N)
 
-    x = np.linspace(0, 1, N+2)
+    x = np.linspace(0, 1, N)
     # Initial values:
     # u = initial_values_average(x, dx)
     u = initial_values(x)
+    u = np.concatenate([[u[-1]], u, [u[0]]])
     for _ in range(int(tend / dt)):
         u[0] = u[-2]  # Apply periodic boundary conditions
         u[-1] = u[1]
@@ -82,6 +83,8 @@ for i, N in enumerate(mesh_sizes):
         u_star[1:-1] = u[1:-1] - dt / dx * F_j_diff
         u[1:-1] = (u_star[1:-1] + u[1:-1])/2
 
+    u = u[1:-1]
+
     numerical_solutions.append(u)
     err_l1[i] = np.sum(np.abs(u - u_exact(x))) * dx
     err_l2[i] = np.sqrt(np.sum((np.abs(u - u_exact(x))) ** 2) * dx)
@@ -91,7 +94,7 @@ for i, N in enumerate(mesh_sizes):
 
 index = 0
 for index, mesh_size in enumerate(mesh_sizes):
-    plt.plot(np.linspace(0, 1, mesh_size+2), numerical_solutions[index], '-',
+    plt.plot(np.linspace(0, 1, mesh_size), numerical_solutions[index], '-',
              label=f"{mesh_sizes[index]} mesh points", linewidth=0.5)
     plt.xlabel("x")
     plt.ylabel("u(x)")
