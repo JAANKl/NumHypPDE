@@ -101,3 +101,42 @@ for index, mesh_size in enumerate(mesh_sizes):
 plt.plot(x := np.linspace(0, 1, mesh_sizes[-1]), u_exact(x), label="exact solution", linewidth=0.5)
 plt.legend()
 plt.show()
+
+mesh_widths = 1 / mesh_sizes
+plt.loglog(mesh_widths, err_l1, label="$L^{1}$-Error")
+plt.loglog(mesh_widths, err_l2, label="$L^{2}$-Error")
+plt.loglog(mesh_widths, err_linf, label="$L^{\infty}$-Error")
+plt.loglog(mesh_widths, 10 * mesh_widths, label="$h^{1}$ (for comparison)")
+plt.loglog(mesh_widths, 10 * mesh_widths ** 0.5, label="$h^{0.5}$ (for comparison)")
+plt.xlabel("mesh width h")
+plt.ylabel("error")
+plt.legend()
+plt.show()
+
+print("L1 average convergence rate:", np.polyfit(np.log(mesh_widths), np.log(err_l1), 1)[0])
+print("L2 average convergence rate:", np.polyfit(np.log(mesh_widths), np.log(err_l2), 1)[0])
+print("Linf average convergence rate:", np.polyfit(np.log(mesh_widths), np.log(err_linf), 1)[0])
+
+print(f"N={mesh_sizes[0]}")
+print(f"L1 Error at N={mesh_sizes[0]}: {err_l1[0]}")
+print(f"L2 Error  at N={mesh_sizes[0]}: {err_l2[0]}")
+
+print(f"Linf Error at N={mesh_sizes[0]}: {err_linf[0]}")
+rates_l1 = []
+rates_l2 = []
+rates_linf = []
+for i, N in enumerate(mesh_sizes[1:]):
+    print(f"N={N}")
+    print(f"L1 Error at N={N}:", err_l1[i + 1])
+    print(f"L2 Error  at N={N}:", err_l2[i + 1])
+    print(f"Linf Error at N={N}:", err_linf[i + 1])
+    rate_l1 = np.polyfit(np.log(mesh_widths[i:i + 2]), np.log(err_l1[i:i + 2]), 1)[0]
+    rate_l2 = np.polyfit(np.log(mesh_widths[i:i + 2]), np.log(err_l2[i:i + 2]), 1)[0]
+    rate_linf = np.polyfit(np.log(mesh_widths[i:i + 2]), np.log(err_linf[i:i + 2]), 1)[0]
+    rates_l1.append(np.round(rate_l1, precision))
+    rates_l2.append(np.round(rate_l2, precision))
+    rates_linf.append(np.round(rate_linf, precision))
+
+    print(f"L1 local convergence rate at N={N} :", rate_l1)
+    print(f"L2 local convergence rate  at N={N}:", rate_l2)
+    print(f"Linf local  convergence rate at N={N}:", rate_linf)
