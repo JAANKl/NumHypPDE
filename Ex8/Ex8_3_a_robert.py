@@ -78,9 +78,9 @@ def reconstruction(u_avg, dx, limiter_sigma):
 def godunov_flux(u_left, u_right):
     #u_left = np.concatenate(([u[-1]], u))
     # u_right =np.concatenate((u, [u[0]]))
-    is_smaller = (u_left <= u_right)
-    return is_smaller*f(u_left)+(1-is_smaller)*f(u_right)
-    #return f(u_left)
+    #is_smaller = (u_left <= u_right)
+    #return is_smaller*f(u_left)+(1-is_smaller)*f(u_right)
+    return f(u_left)
 
 def minmod(a):
     # if not all entries have the same sign, return 0
