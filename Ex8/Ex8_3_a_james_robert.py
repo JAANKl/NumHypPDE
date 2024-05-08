@@ -60,6 +60,15 @@ def sigma_minmod(u, dx):
     sigma_inside = vectorized_minmod(du[1:], du[:-1])/dx
     return np.concatenate([[sigma_inside[0]], sigma_inside, [sigma_inside[-1]]])
 
+def sigma_superbee(u, dx):
+    du = np.diff(u)
+    # boundary
+    sigma_l_inside = vectorized_minmod(2*du[:-1], du[1:])/dx
+    sigma_r_inside = vectorized_minmod(du[:-1], 2*du[1:])/dx
+    sigma_inside = vectorized_maxmod(sigma_l_inside, sigma_r_inside)
+    return np.concatenate([[sigma_inside[0]], sigma_inside, [sigma_inside[-1]]])
+
+
 def sigma_van_leer(u, dx):
     du = np.diff(u)
     # boundary
@@ -90,8 +99,8 @@ numerical_solutions = []
 
 # number of decimals for reporting values
 precision = 4
-sigma_func_list = [sigma_minmod, sigma_van_leer]
-sigma_names = ["minmod", "van leer"]
+sigma_func_list = [sigma_minmod, sigma_van_leer, sigma_superbee]
+sigma_names = ["minmod", "van leer", "superbee"]
 
 for sigma_func in sigma_func_list:
     for i, N in enumerate(mesh_sizes):
