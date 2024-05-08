@@ -47,6 +47,12 @@ def vectorized_minmod(a, b):
     result = np.where(mask, 0, np.where(np.abs(a) < np.abs(b), a, b))
     return result
 
+def vectorized_maxmod(a, b):
+    # Create a condition where a and b have opposite signs (or either is zero)
+    mask = a * b <= 0
+    # Where this condition is true, we return 0
+    result = np.where(mask, 0, np.where(np.abs(a) > np.abs(b), a, b))
+    return result
 
 def sigma_minmod(u, dx):
     du = np.diff(u)
@@ -63,10 +69,6 @@ def sigma_van_leer(u, dx):
     sigma_inside = (r+np.abs(r))/(1+np.abs(r))
     return np.concatenate([[sigma_inside[0]], sigma_inside, [sigma_inside[-1]]])
 
-# def sigma(u, dx):
-#     du = np.concatenate([np.diff(u), [0]])
-#     # boundary
-#     return vectorized_minmod(du / dx, np.roll(du, 1) / dx)
 
 
 def u_minus(u, dx, sigma_func):
