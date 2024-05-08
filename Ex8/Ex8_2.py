@@ -6,7 +6,7 @@ from scipy import integrate
 def init(dx, x):
     u0_ = np.zeros(len(x))
     for j in range(len(x)):
-        u0_[j] = 1 / dx * integrate.quad(lambda y: np.sin(2 * np.pi * y), x[j] - 0.5 * dx, x[j] + 0.5 * dx)[0]
+        u0_[j] = 1 / dx * integrate.quad(initial_values, x[j] - 0.5 * dx, x[j] + 0.5 * dx)[0]
     return u0_
 
 
@@ -31,7 +31,7 @@ def u_exact(x):
 
 def rusanov_flux(u_left, u_right, dx, dt):
     return (f(u_left) + f(u_right)) / 2 - np.max([np.abs(f_prime(u_left)), np.abs(f_prime(u_right))]) / 2 * (
-                u_right - u_left)
+            u_right - u_left)
 
 
 def vectorized_minmod(a, b):
@@ -125,7 +125,6 @@ plt.loglog(mesh_widths, err_l2, label="$L^{2}$-Error")
 plt.loglog(mesh_widths, err_linf, label="$L^{\infty}$-Error")
 plt.loglog(mesh_widths, 10 * mesh_widths, label="$h^{1}$ (for comparison)")
 plt.loglog(mesh_widths, 10 * mesh_widths ** 0.5, label="$h^{0.5}$ (for comparison)")
-plt.loglog(mesh_widths, 10 * mesh_widths ** 2, label="$h^{2}$ (for comparison)")
 plt.xlabel("mesh width h")
 plt.ylabel("error")
 plt.legend()
@@ -158,3 +157,36 @@ for i, N in enumerate(mesh_sizes[1:]):
     print(f"L1 local convergence rate at N={N} :", rate_l1)
     print(f"L2 local convergence rate  at N={N}:", rate_l2)
     print(f"Linf local  convergence rate at N={N}:", rate_linf)
+
+
+def latex_out(mesh_sizes, err_l1, err_l2, err_linf, rates_l1, rates_l2, rates_linf, precision=3):
+    # Example output:
+    """
+    40 & 0.389 & - & 0.439 & - & 0.633 & - \\
+    \hline
+    80 & 0.244 & 0.676 & 0.274 & 0.680 & 0.394  & 0.686\\
+    \hline
+    160 & 0.137 &  0.826 & 0.154 & 0.829 & 0.221 & 0.835\\
+    \hline
+    320 & 0.073 & 0.909 &  0.082 & 0.912 & 0.117  & 0.919\\
+    \hline
+    640 & 0.038 & 0.952 & 0.042 & 0.955 &  0.060 & 0.960 \\
+    """
+    # first line
+    N = mesh_sizes[0]
+    i = 0
+    # rounding errors
+    err_l1 = np.round(err_l1, precision)
+    err_l2 = np.round(err_l2, precision)
+    err_linf = np.round(err_linf, precision)
+
+    print(f"{N} & {err_l1[0]} & - & {err_l2[0]} & - & {err_linf[0]} & - \\\\")
+    print(r"\hline")
+
+    for i, N in enumerate(mesh_sizes[1:]):
+        print(
+            f"{N} & {err_l1[i + 1]} & {rates_l1[i]} & {err_l2[i + 1]} & {rates_l2[i]} & {err_linf[i + 1]} & {rates_linf[i]} \\\\")
+        print(r"\hline")
+
+
+latex_out(mesh_sizes, err_l1, err_l2, err_linf, rates_l1, rates_l2, rates_linf)
