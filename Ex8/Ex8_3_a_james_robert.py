@@ -123,8 +123,8 @@ for sigma_func in sigma_func_list:
 # print only one numerical solution with exact solution
 
 index = 0
-for index, mesh_size in enumerate(mesh_sizes):
-    plt.plot(np.linspace(0, 2, mesh_size), numerical_solutions[index], '-',
+for index, sigma_func in enumerate(sigma_func_list):
+    plt.plot(np.linspace(0, 2, mesh_sizes[-1]), numerical_solutions[index], '-',
              label=f"{sigma_names[index]}", linewidth=0.5)
     plt.xlabel("x")
     plt.ylabel("u(x)")
