@@ -109,11 +109,11 @@ sigma_names = ["minmod", "van leer", "superbee"]
 
 for sigma_func in sigma_func_list:
     for i, N in enumerate(mesh_sizes):
-        dx = 2 / N
+        dx = 1 / N
         # choosing dt according to CFL condition
-        dt = 2 / (4 * N)  # <= 1/(2N)
+        dt = 1 / (2 * N)  # <= 1/(2N)
 
-        x = np.linspace(0, 2, N)
+        x = np.linspace(0, 1, N)
         # Initial values:
         # u = initial_values_average(x, dx)
         # u = initial_values(x)
@@ -139,10 +139,10 @@ for sigma_func in sigma_func_list:
 
 index = 0
 for index, sigma_func in enumerate(sigma_func_list):
-    plt.plot(np.linspace(0, 2, mesh_sizes[-1]), numerical_solutions[index], '-',
+    plt.plot(np.linspace(0, 1, mesh_sizes[-1]), numerical_solutions[index], '-',
              label=f"{sigma_names[index]}", linewidth=0.5)
     plt.xlabel("x")
     plt.ylabel("u(x)")
-plt.plot(x := np.linspace(0, 2, mesh_sizes[-1]), u_exact(x), label="exact solution", linewidth=0.5)
+plt.plot(x := np.linspace(0, 1, mesh_sizes[-1]), u_exact(x), label="exact solution", linewidth=0.5)
 plt.legend()
 plt.show()
