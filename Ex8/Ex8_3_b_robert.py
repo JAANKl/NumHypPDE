@@ -5,15 +5,7 @@ tend = 1
 
 
 def initial_values(x):
-    return 2*(x<=0.5)+1*(x>0.5)
-    #return np.sin(4*np.pi*x)
-
-def initial_values_average(x, dx):
-    left = x <= 0.5-dx / 2
-    middle = (x > 0.5-dx / 2) * (x <= 0.5 + dx / 2)
-    right = (x > 0.5 + dx / 2)
-
-    return (2) * left + (-1) * x / dx * middle + 1 * right
+    return np.sin(4*np.pi*x)
 
 
 def average(x, func, dx):
