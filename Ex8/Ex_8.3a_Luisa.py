@@ -167,7 +167,7 @@ def comp_ustar(uc, dt, N, dx, rhs):
 if __name__ == "__main__":
     ## setup
     cfl = 0.4
-    tend = 1
+    tend = 0.1
 
     xleft = 0
     xright = 2
@@ -251,9 +251,9 @@ if __name__ == "__main__":
 
     plt.figure()
     plt.plot(xi, uc_minmod, '--', markerfacecolor="None", markersize=1, label= 'minmod')
-    plt.plot(xi, uc_superbee, '--', markerfacecolor="None", markersize=1, label= 'superbee')
-    plt.plot(xi, uc_mc, '--', markerfacecolor="None", markersize=1, label= 'mc')
-    plt.plot(xi, uc_van_leer, '--', markerfacecolor="None", markersize=1, label= 'van leer')
+    #plt.plot(xi, uc_superbee, '--', markerfacecolor="None", markersize=1, label= 'superbee')
+    #plt.plot(xi, uc_mc, '--', markerfacecolor="None", markersize=1, label= 'mc')
+    #plt.plot(xi, uc_van_leer, '--', markerfacecolor="None", markersize=1, label= 'van leer')
     plt.plot(xi, uex, 'k-', markerfacecolor="None", markersize=1, label='exact')
     plt.legend()
     plt.xlabel('x');plt.ylabel('u')

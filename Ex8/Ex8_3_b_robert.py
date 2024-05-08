@@ -8,6 +8,7 @@ def initial_values(x):
     return np.sin(4*np.pi*x)
 
 
+
 def average(x, func, dx):
     # 1/dx*(dx/2*func(x-dx)+dx/2*func(x))
     # midpoint rule

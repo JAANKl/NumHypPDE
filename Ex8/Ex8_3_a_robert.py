@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-tend = 1
+tend = 0.5
 
 
 def initial_values(x):
@@ -19,9 +19,9 @@ def initial_values_average(x, dx):
 def average(x, func, dx):
     # 1/dx*(dx/2*func(x-dx)+dx/2*func(x))
     # midpoint rule
-    # (func(x-dx/2)+func(x+dx/2))/2
+    return (func(x-dx/2)+func(x+dx/2))/2
     # left point rule
-    return 1 / dx * (dx / 2 * func(x - dx) + dx / 2 * func(x))
+    #return 1 / dx * (dx / 2 * func(x - dx) + dx / 2 * func(x))
 
 
 def f(x):
@@ -57,10 +57,11 @@ def reconstruction(u_avg, dx, limiter_sigma):
     # u_right = np.concatenate((u_avg, [u_avg[0]])) 
     right_diff = u_right[1:] - u_right[:-1]
     left_diff = u_left[1:] - u_left[:-1]
-    sigma_j = limiter_sigma(left_diff,right_diff, dx)
+    sigma_j = limiter_sigma(right_diff,left_diff, dx)
     u_j_plus_half_minus = u_avg + sigma_j * dx / 2
-    u_j_plus_half_plus = u_right[1:] - sigma_j * dx / 2
-    return u_j_plus_half_minus, u_j_plus_half_plus
+    u_j_plus_half_plus = u_avg[1:] - sigma_j[1:] * dx / 2
+    #cut off last of u_j_plus_half_minus
+    return u_j_plus_half_minus[:-1], u_j_plus_half_plus
 
 def godunov_flux(u_left, u_right):
     #u_left = np.concatenate(([u[-1]], u))
@@ -119,21 +120,28 @@ def u_plushalf_plus(u, dx):
     return u_right - sigma_right * dx / 2
 
 
+def rusanov_flux(u_left, u_right):
+    f_prime = lambda x: np.ones_like(x)
+    return (f(u_left) + f(u_right)) / 2 - np.max([np.abs(f_prime(u_left)), np.abs(f_prime(u_right))]) / 2 * (
+                u_right - u_left)
+
 for i, N in enumerate(mesh_sizes):
     dx = 1 / N
     # choosing dt according to CFL condition
-    dt = 1 / (20 * N)  # <= 1/(2N)
+    dt = 1 / (2 * N)  # <= 1/(2N)
 
     x = np.linspace(0, 2, N)
     # Initial values:
     #u = initial_values_average(x, dx)
-    u=initial_values_average(x, dx)
+    u=average(x, initial_values, dx)
     for _ in range(int(tend / dt)):
-        u_j_plus_half_minus, u_j_plus_half_plus = reconstruction(u, dx, sigma_van_leer)
-        F_j_plus_half = godunov_flux(u_j_plus_half_minus, u_j_plus_half_minus)
-        F_j_diff = F_j_plus_half[1:-1] - F_j_plus_half[:-2]
-        u[1:-1] = u[1:-1] - dt / dx * F_j_diff
         u = apply_dirichlet_bc(u)
+
+        u_j_plus_half_minus, u_j_plus_half_plus = reconstruction(u, dx, sigma_minmod)
+        F_j_plus_half = rusanov_flux(u_j_plus_half_minus, u_j_plus_half_plus)#godunov_flux(u_j_plus_half_minus, u_j_plus_half_plus)
+
+        F_j_diff = F_j_plus_half[1:] - F_j_plus_half[0:-1]
+        u[1:-1] = u[1:-1]  - dt / dx * F_j_diff
 
     numerical_solutions.append(u)
     err_l1[i] = np.sum(np.abs(u - u_exact(x))) * dx
