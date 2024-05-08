@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-tend = 0.5
+tend = 1
 
 
 def initial_values(x):
@@ -15,6 +15,18 @@ def initial_values_average(x, dx):
 
     return (2) * left + (-1) * x / dx * middle + 1 * right
 
+
+def minmod(a, b):
+    return (np.sign(a)+np.sign(b))/2.0*np.minimum(np.abs(a), np.abs(b))
+
+def maxmod(a,b):
+    return (np.sign(a)+np.sign(b))/2.0*np.maximum(np.abs(a), np.abs(b))
+
+def superbee(a,b):
+    return maxmod(minmod(2 * a, b), minmod(a, 2 * b))
+
+def mc(a,b):
+    return np.maximum(0, np.sign(a) * np.minimum(np.abs(2*a), np.minimum(np.abs((a+b)/2), np.abs(2*b))))
 
 def average(x, func, dx):
     # 1/dx*(dx/2*func(x-dx)+dx/2*func(x))
@@ -75,7 +87,6 @@ def minmod(a):
     minmod_condition = np.logical_or(np.all(a>0, axis=1), np.all(a<0, axis=1))
     return np.min(np.abs(a), axis = 1)*(minmod_condition)
 
-
 def sigma_minmod(right_diff, left_diff, dx):
     data = np.concatenate((right_diff[:, None], left_diff[:, None]),axis=1)/dx
     return minmod(data)
@@ -99,26 +110,6 @@ def sigma(u, dx):
 
     return np.array(
         [sigma_j(u_j_minus, u_j, u_j_plus, dx) for u_j_minus, u_j, u_j_plus in zip(u_left, u_middle, u_right)])
-
-
-def u_plushalf_minus(u, dx):
-    # vector containing u_{j+1/2}^{-} for all j
-    # boundary
-    u_left = u[:-1]
-    return u_left + sigma(u_left, dx) * dx / 2
-
-
-def u_plushalf_plus(u, dx):
-    # vector containing u_{j+1/2}^{+} for all j
-    # truncating by one element
-    # u_right = np.concatenate((u[1:], [u[-1]]))
-    u_right = u[1:]
-    sigma_middle = sigma(u, dx)
-    sigma_right = sigma_middle[1:]
-    # sigma_right = np.concatenate((sigma_middle[1:], [sigma_middle[-1]]))
-
-    return u_right - sigma_right * dx / 2
-
 
 def rusanov_flux(u_left, u_right):
     f_prime = lambda x: np.ones_like(x)
