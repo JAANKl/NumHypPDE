@@ -421,16 +421,17 @@ if __name__ == "__main__":
     file.close()
     
     ## plot numerical solution
-#    with open ('num_sol_{}.txt'.format(ischeme), 'w', encoding='utf-8') as file:
-#        for index in range(len(xi)):
-#            file.write("%f %f %f \n"%(xi[index], uex[index], uc_[index]))
-#
-#    plt.figure()
-#    plt.plot(xi, uc_, 'r--', markerfacecolor="None", markersize=1, label= '{}'.format(islope))
-#    plt.plot(xi, uex, 'k-', markerfacecolor="None", markersize=1, label='exact')
-#    plt.legend()
-#    plt.xlabel('x');plt.ylabel('u')
-#    plt.show()
+
+    with open ('num_sol_{}.txt'.format(ischeme), 'w', encoding='utf-8') as file:
+        for index in range(len(xi)):
+            file.write("%f %f %f \n"%(xi[index], uex[index], uc_[index]))
+
+    plt.figure()
+    plt.plot(xi, uc_, 'r--', markerfacecolor="None", markersize=1, label= '{}'.format(islope))
+    plt.plot(xi, uex, 'k-', markerfacecolor="None", markersize=1, label='exact')
+    plt.legend()
+    plt.xlabel('x');plt.ylabel('u')
+    plt.show()
     
     
 
