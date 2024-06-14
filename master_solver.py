@@ -11,18 +11,29 @@ import scipy.integrate as integrate
 def init(dx, x):
     # u0_ = np.zeros(len(x) - 1)
     # for i in range(len(x) - 1):
-    #     if x[i + 1] <= 0.5:
-    #         u0_[i] = 2
-    #     elif x[i] > 0.5:
+    #     if x[i + 1] < 0:
     #         u0_[i] = 1
+    #     elif x[i] >= 0:
+    #         u0_[i] = 0
     #     else:
-    #         u0_[i] = (0.5 - 2 * x[i] + x[i + 1]) / dx
+    #         u0_[i] = (0 - 2 * x[i] + x[i + 1]) / dx
     # return u0_
     return exactu(0,x[:-1])
 
 
 def exactu(t, x):
-    return np.where((x < t + 0.5) & (x > t - 0.5), 2, 1)
+    # Rarefaction:
+    u = np.zeros(len(x))
+    for i in range(len(x)):
+        if x[i] <= 0:
+            u[i] = 0
+        elif x[i] <= t:
+            u[i] = x[i]/t
+        else:
+            u[i] = 1
+    return u
+    # Shock:
+    # return np.where((x < 0.5*t), 0, 1)
 
 
 def apply_boundary_condition(uc, which_bc):
@@ -351,11 +362,11 @@ if __name__ == "__main__":
     cfl = 0.4
     tend = 1
 
-    xleft = -2
-    xright = 2
+    xleft = -1
+    xright = 3
 
-    flux = lambda u: u
-    fluxprime = lambda u: 1
+    flux = lambda u: u**2/2
+    fluxprime = lambda u: u
 
     iordert = 1
     # iordert 1: euler
@@ -364,10 +375,10 @@ if __name__ == "__main__":
     # icase 1: "upwind", "godunov", "lax-friedrichs", "rusanov", "lax-wendroff"
     # icase 2: "beam-warming"
     # icase 3: "lax-friedrichs_m", "rusanov_m", "godunov_m" (for second order reconstruction)
-    ischeme = "rusanov"
+    ischeme = "lax-wendroff"
     islope = "mc"
     # "minmod", "superbee", "mc", "vanleer"
-    which_boundary_condition = "periodic"
+    which_boundary_condition = "neumann"
     # "neumann", "periodic"
 
     N = 100
