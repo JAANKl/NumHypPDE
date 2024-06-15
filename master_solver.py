@@ -51,28 +51,30 @@ def apply_boundary_condition(uc, which_bc):
     return uc
 
 
-def getflux(ischeme, islope, dt, dx, flux, fluxp, u):
+def getflux(ischeme, islope, dt, dx, flux, fluxprime, u):
     f = flux(u) * np.ones(len(u))
-    fp = fluxp(u) * np.ones(len(u))
+    fprime = fluxprime(u) * np.ones(len(u))
 
     if ischeme == "upwind":
-        fh = upwind(u, f, fp)
+        fh = upwind(u, f, fprime)
     elif ischeme == "godunov":
         fh = godunov(u, f, flux)
     elif ischeme == "lax-friedrichs":
-        fh = lax_friedrichs(u, f, fp)
+        fh = lax_friedrichs(u, f, fprime)
+    elif ischeme == "roe":
+        fh = roe(u, f, fprime, flux)
     elif ischeme == "rusanov":
-        fh = rusanov(u, f, fp, fluxp)
+        fh = rusanov(u, f, fprime, fluxprime)
     elif ischeme == "lax-wendroff":
-        fh = lax_wendroff(dt, dx, u, f, fp)
+        fh = lax_wendroff(dt, dx, u, f, fprime)
     elif ischeme == "beam-warming":
-        fh = beam_warming(dt, dx, u, f, fp)
+        fh = beam_warming(dt, dx, u, f, fprime)
     elif ischeme == "lax-friedrichs_m":
-        fh = lax_friedrichs_m(islope, dx, u, flux, fluxp)
+        fh = lax_friedrichs_m(islope, dx, u, flux, fluxprime)
     elif ischeme == "rusanov_m":
-        fh = rusanov_m(islope, dx, u, flux, fluxp)
+        fh = rusanov_m(islope, dx, u, flux, fluxprime)
     elif ischeme == "godunov_m":
-        fh = godunov_m(islope, dx, u, fp, flux)
+        fh = godunov_m(islope, dx, u, fprime, flux)
     else:
         sys.exit("ERROR: this is not defined here.")
     rhs = -(fh[1:] - fh[0:-1]) / dx
@@ -119,6 +121,32 @@ def lax_friedrichs(u, f, fp):
 
     alp = max(np.absolute(fp))
     fh = 0.5 * (f[0:-1] + f[1:]) - 0.5 * alp * (u[1:] - u[0:-1])
+    return fh
+
+# def roe(u, f, fp):
+#     fh = np.zeros(len(u) - 1)
+#     A_hat = np.zeros(len(u) - 1)
+#     for j in range(len(u)-1):
+#         if np.abs(u[j]-u[j+1]) < 1e-7:
+#             A_hat[j] = fp[j]
+#         else:
+#             A_hat[j] = (f[j+1] - f[j])/(u[j+1] - u[j])
+#     fh = np.where(A_hat>=0, f[:-1], f[1:])
+#     return fh
+
+def roe(u, f, fp, flux):
+    fh = np.zeros(len(u)-1)
+    ah = np.zeros(len(u)-1)
+    for i in range(len(u)-1):
+        if u[i]==u[i+1]:
+            ah[i] = fp[i]
+        else:
+            ah[i] = (f[i+1]-f[i])/(u[i+1]-u[i])
+    for i in range(len(u)-1):
+        if ah[i] >= 0:
+            fh[i] = flux(u[i])
+        else:
+            fh[i] = flux(u[i+1])
     return fh
 
 
@@ -199,12 +227,12 @@ def rusanov_m(islope, dx, u, flux, fluxp):
         sys.exit("ERROR: this is not defined here.")
 
     ## advection equation
-    alp = np.maximum(np.abs(fluxp(um)), np.abs(fluxp(up)))
-    fh = 0.5 * (flux(um) + flux(up)) - 0.5 * alp * (up - um)
+    # alp = np.maximum(np.abs(fluxp(um)), np.abs(fluxp(up)))
+    # fh = 0.5 * (flux(um) + flux(up)) - 0.5 * alp * (up - um)
 
     ## burgers' equation
-    #    alp = np.maximum(np.absolute(um), np.absolute(up))
-    #    fh = 0.5*(flux(um)+flux(up))-0.5*alp*(up-um)
+    alp = np.maximum(np.absolute(um), np.absolute(up))
+    fh = 0.5*(flux(um)+flux(up))-0.5*alp*(up-um)
     return fh
 
 
@@ -372,10 +400,10 @@ if __name__ == "__main__":
     # iordert 1: euler
     # iordert 2: rk2
     icase = 1
-    # icase 1: "upwind", "godunov", "lax-friedrichs", "rusanov", "lax-wendroff"
+    # icase 1: "upwind", "godunov", "lax-friedrichs", "rusanov", "lax-wendroff", "roe"
     # icase 2: "beam-warming"
     # icase 3: "lax-friedrichs_m", "rusanov_m", "godunov_m" (for second order reconstruction)
-    ischeme = "lax-wendroff"
+    ischeme = "godunov"
     islope = "mc"
     # "minmod", "superbee", "mc", "vanleer"
     which_boundary_condition = "neumann"
