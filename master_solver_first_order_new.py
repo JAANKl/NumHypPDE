@@ -10,14 +10,15 @@ def init(dx, x):
     return u0_
 
 
-u_L = 0
+u_L = -1
 u_R = 1
 
 
 def initial_values(x):
     # return 2 * (x <= 0.5) + 1 * (x > 0.5)
-    return np.sin(np.pi * x)
-    # return np.where(x < 0, u_L, u_R)
+    # return np.sin(np.pi * x)
+    # Bugers' equation
+    return np.where(x < 0, u_L, u_R)
 
 
 a = 1
@@ -25,34 +26,34 @@ a = 1
 
 def f(u):
     # Linear advection:
-    return a*u
+    # return a*u
     # Burgers' equation:
-    # return u ** 2 / 2
+    return u ** 2 / 2
 
 
 def f_prime(u):
     # Linear advection:
-    return a*np.ones_like(u)
+    # return a*np.ones_like(u)
     # Burgers' equation:
-    # return u
+    return u
 
 
 def u_exact(x, t):
     # Linear advection:
-    return initial_values(x - a*t)
+    # return initial_values(x - a*t)
     # Burgers' equation shock: (u_L > u_R)
     # s = (f(u_L) - f(u_R)) / (u_L - u_R)
     # return np.where((x < s*t), u_L, u_R)
     # Burgers' equation rarefaction: (u_L < u_R)
-    # u = np.zeros(len(x))
-    # for i in range(len(x)):
-    #     if x[i] <= f_prime(u_L) * t:
-    #         u[i] = u_L
-    #     elif x[i] <= f_prime(u_R) * t:
-    #         u[i] = x[i] / t
-    #     else:
-    #         u[i] = u_R
-    # return u
+    u = np.zeros(len(x))
+    for i in range(len(x)):
+        if x[i] <= f_prime(u_L) * t:
+            u[i] = u_L
+        elif x[i] <= f_prime(u_R) * t:
+            u[i] = x[i] / t
+        else:
+            u[i] = u_R
+    return u
 
 
 def apply_bc(u, which_bc):
@@ -78,6 +79,8 @@ def get_flux(u_left, u_right, which_scheme):
         return godunov_flux(u_left, u_right)
     elif which_scheme == "roe":
         return roe_flux(u_left, u_right)
+    elif which_scheme == "lax_wendroff":
+        return lax_wendroff_flux(u_left, u_right)
     else:
         raise NotImplementedError(f"{which_scheme} scheme isn't implemented.")
 
@@ -124,16 +127,25 @@ def roe_flux(u_left, u_right):
     fh = np.where(A_hat >= 0, f(u_left), f(u_right))
     return fh
 
+def lax_wendroff_flux(u_left, u_right):
+    A_hat = np.zeros(len(u_left))
+    for j in range(len(u_left)):
+        if np.abs(u_left[j] - u_right[j]) < 1e-7:
+            A_hat[j] = f_prime(u_left[j])
+        else:
+            A_hat[j] = (f(u_right[j]) - f(u_left[j])) / (u_right[j] - u_left[j])
+    return (f(u_left) + f(u_right)) / 2 - A_hat*cfl/2 * (f(u_right) - f(u_left))
+
 
 tend = 1.0
 x_left = -2
 x_right = 2
 cfl = 0.5  # = dt/dx
-# which_bc = "neumann"
-which_bc = "periodic"
-which_scheme = "enquist_osher"
-# lax_friedrichs, rusanov, enquist_osher, godunov, roe
-# TODO: implement lax-wendroff and upwind scheme
+which_bc = "neumann"
+# which_bc = "periodic"
+which_scheme = "rusanov"
+# lax_friedrichs, rusanov, enquist_osher, godunov, roe, lax_wendroff
+# TODO: implement and upwind scheme (or is this the same as roe?)
 mesh_sizes = np.array([32, 64, 128, 256, 512])
 err_l1 = np.zeros(n := len(mesh_sizes))
 err_l2 = np.zeros(n)
