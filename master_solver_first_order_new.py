@@ -15,8 +15,8 @@ u_R = 1
 
 
 def initial_values(x):
-    # return 2 * (x <= 0.5) + 1 * (x > 0.5)
-    return np.sin(np.pi * x)
+    return 2 * (x <= 0.5) + 1 * (x > 0.5)
+    # return np.sin(np.pi * x)
     # Bugers' equation
     # return np.where(x < 0, u_L, u_R)
     # return np.sin(np.pi*x) + 0.5
@@ -142,9 +142,9 @@ tend = 1
 x_left = -2
 x_right = 2
 cfl = 0.5  # = dt/dx
-# which_bc = "neumann"
-which_bc = "periodic"
-which_scheme = "rusanov"
+which_bc = "neumann"
+# which_bc = "periodic"
+which_scheme = "roe"
 # lax_friedrichs, rusanov, enquist_osher, godunov, roe, lax_wendroff
 # TODO: implement and upwind scheme (or is this the same as roe?)
 mesh_sizes = np.array([32, 64, 128, 256, 512])

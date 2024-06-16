@@ -213,7 +213,9 @@ cfl = 0.5  # = dt/dx
 which_bc = "periodic"
 which_scheme = "rusanov"
 # lax_friedrichs, rusanov, enquist_osher, godunov, roe, lax_wendroff
-# TODO: implement and upwind scheme (or is this the same as roe?)
+# TODO: implement upwind scheme (or is this the same as roe?)
+slope_limiters = {"minmod": sigma_minmod, "mc": sigma_mc, "van_leer": sigma_van_leer, "superbee": sigma_superbee}
+slope = slope_limiters["mc"]
 mesh_sizes = np.array([32, 64, 128, 258, 512])
 err_l1 = np.zeros(n := len(mesh_sizes))
 err_l2 = np.zeros(n)
@@ -232,11 +234,11 @@ for i, N in enumerate(mesh_sizes):
     u = np.concatenate([[u[0]], [u[0]], u, [u[-1]], [u[-1]]])  # Add ghost cells
     for _ in range(int(tend / dt)):
         u = apply_bc(u, which_bc)
-        F_j = get_flux(u_minus(u, dx, sigma_minmod)[:-1], u_plus(u, dx, sigma_minmod)[1:], which_scheme)
+        F_j = get_flux(u_minus(u, dx, slope)[:-1], u_plus(u, dx, slope)[1:], which_scheme)
         F_j_diff = F_j[1:] - F_j[:-1]
         u_ = u.copy()
         u_[2:-2] = u_[2:-2] - dt / dx * F_j_diff[1:-1]
-        F_j = get_flux(u_minus(u_, dx, sigma_minmod)[:-1], u_plus(u_, dx, sigma_minmod)[1:], which_scheme)
+        F_j = get_flux(u_minus(u_, dx, slope)[:-1], u_plus(u_, dx, slope)[1:], which_scheme)
         F_j_diff = F_j[1:] - F_j[:-1]
         u_[2:-2] = u_[2:-2] - dt / dx * F_j_diff[1:-1]
         u[2:-2] = (u[2:-2] + u_[2:-2])/2
