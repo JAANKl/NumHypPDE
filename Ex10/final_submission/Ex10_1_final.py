@@ -142,8 +142,8 @@ numerical_solutions = []
 
 # number of decimals for reporting values
 precision = 4
-sigma_func_list = [no_sigma, sigma_minmod, sigma_van_leer, sigma_superbee, sigma_mc]
-sigma_names = ["Godunov (no limiter)", "minmod", "van leer", "superbee", "MC"]
+sigma_func_list = [no_sigma, sigma_minmod, sigma_superbee, sigma_mc]
+sigma_names = ["Godunov (no limiter)", "minmod", "superbee", "MC"]
 
 for sigma_func in sigma_func_list:
     for i, N in enumerate(mesh_sizes):
@@ -175,23 +175,28 @@ for sigma_func in sigma_func_list:
         err_l2[i] = np.sqrt(np.sum((np.abs(u - u_exact(x))) ** 2) * dx)
         err_linf[i] = np.max(np.abs(u - u_exact(x)))
 
-"""
+
 #plot numerical together with exact solution and save figure as png, no sigma_func
+linewidth = 0.8
 fig, ax = plt.subplots()
 for index, mesh_size in enumerate(mesh_sizes):
-    ax.plot(np.linspace(-2, 2, mesh_size), numerical_solutions[index], '-',
-             label=f"{mesh_size}", linewidth=0.5)
+    ax.plot(np.linspace(-2, 2, mesh_size), numerical_solutions[index][:, 0], '-',
+             label=r"$u_1$ Godunov (no limiter)", linewidth=linewidth)
+    ax.plot(np.linspace(-2, 2, mesh_size), numerical_solutions[index][:, 1], '-',
+             label=r"$u_2$ Godunov (no limiter)", linewidth=linewidth)
     ax.set_xlabel("x")
     ax.set_ylabel("u(x)")
 
-ax.plot(x := np.linspace(-2, 2, mesh_sizes[-1]), u_exact(x), label="exact solution", linewidth=0.5)
+ax.plot(x := np.linspace(-2, 2, mesh_sizes[-1]), u_exact(x)[:, 0], label=r"$u_1$ exact solution", linewidth=linewidth)
+ax.plot(x := np.linspace(-2, 2, mesh_sizes[-1]), u_exact(x)[:, 1], label=r"$u_2$ exact solution", linewidth=linewidth)
+
 ax.legend()
 plt.savefig("Ex10_1_a.png")
 plt.show()
-"""
+
 
 index = 0
-linewidth = 1
+
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 7))
 for index, sigma_func in enumerate(sigma_func_list):
     ax1.plot(np.linspace(-2, 2, mesh_sizes[-1]), numerical_solutions[index][:, 0], '-',
@@ -208,3 +213,9 @@ ax1.legend()
 
 plt.savefig("Ex10_1_b.png")
 plt.show()
+
+#save numerical solution as txt for each limiter
+for index, sigma_func in enumerate(sigma_func_list):
+    #header: x, u1, u2
+    numerical_solutions[index] = np.concatenate([x[:, None], numerical_solutions[index]], axis=1)
+    np.savetxt(f"Ex10_1_{sigma_names[index]}.txt", numerical_solutions[index], header="x u1 u2", comments="")
