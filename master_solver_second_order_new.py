@@ -197,10 +197,10 @@ def lax_wendroff(dt, dx, u):
 def enquist_osher(dx, u):
     um, up = u[:-1], u[1:]
     integrand = lambda theta: np.abs(fluxp(theta))
-    integrals = np.zeros_like(um)
-    for i in range(len(integrals)):
-        integrals[i] = integrate.quad(integrand, um[i], up[i], epsabs=1e-03)[0]
-    return (flux(um) + flux(up)) / 2 - integrals
+    a = um
+    b = up
+    integral = (b-a)/6 * (integrand(a) + 4*integrand((a+b)/2) + integrand(b)) # use Simpson rule to approximate
+    return (flux(um) + flux(up)) / 2 - integral/2
 
 def roe(dx, u):
     um, up = u[:-1], u[1:]
@@ -266,10 +266,10 @@ def rusanov_m(islope, dx, u):
 def enquist_osher_m(islope, dx, u):
     um, up = getslope(dx, u, islope)
     integrand = lambda theta: np.abs(fluxp(theta))
-    integrals = np.zeros_like(um)
-    for i in range(len(integrals)):
-        integrals[i] = integrate.quad(integrand, um[i], up[i])[0]
-    return (flux(um) + flux(up)) / 2 - integrals
+    a = um
+    b = up
+    integral = (b - a) / 6 * (integrand(a) + 4 * integrand((a + b) / 2) + integrand(b))  # use Simpson rule to approximate
+    return (flux(um) + flux(up)) / 2 - integral / 2
 
 
 def godunov_m(islope, dx, u):
@@ -451,7 +451,7 @@ if __name__ == "__main__":
     # icase 1: "upwind", "godunov", "lax_friedrichs", "rusanov", "lax_wendroff", "enquist_osher", roe
     # icase 2: "beam-warming"
     # icase 3: "lax_friedrichs_m", "rusanov_m", "godunov_m", "enquist_osher_m", "roe_m"
-    ischeme = "rusanov_m"
+    ischeme = "enquist_osher_m"
     islope = "minmod"
     # "zero", "minmod", "superbee", "mc", "vanleer"
 
