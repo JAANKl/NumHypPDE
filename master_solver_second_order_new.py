@@ -2,6 +2,7 @@ import numpy as np
 import math, sys
 import matplotlib.pyplot as plt
 import scipy.integrate as integrate
+import scipy.optimize as sc
 
 
 def init(dx, x):
@@ -11,16 +12,17 @@ def init(dx, x):
     return u0_
 
 
-u_L = 1
-u_R = -0.5
+u_L = -1
+u_R = 1
 
 
 def initial_values(x):
     # return 2 * (x <= 0.5) + 1 * (x > 0.5)
     # return np.sin(2 * np.pi * x)
-    # Bugers' equation
-    return np.where(x < 0, u_L, u_R)
-    # return np.sin(np.pi*x) + 0.5
+    # Burgers' equation Riemann Problem
+    # return np.where(x < 0, u_L, u_R)
+    # Burgers' equation sin wave
+    return np.sin(np.pi*x) + 0.5
 
 
 a = 1
@@ -44,8 +46,8 @@ def exactu(t, x):
     # Linear advection:
     # return initial_values(x - a*t)
     # Burgers' equation shock: (u_L > u_R)
-    s = (flux(u_L) - flux(u_R)) / (u_L - u_R)
-    return np.where((x < s*t), u_L, u_R)
+    # s = (flux(u_L) - flux(u_R)) / (u_L - u_R)
+    # return np.where((x < s*t), u_L, u_R)
     # Burgers' equation rarefaction: (u_L < u_R)
     # u = np.zeros(len(x))
     # for i in range(len(x)):
@@ -56,6 +58,18 @@ def exactu(t, x):
     #     else:
     #         u[i] = u_R
     # return u
+    # Burgers' equation sin wave:
+    x_s = 1 + 1 / 2 * t
+    def g(x_0, t, x):
+        return x_0 + (np.sin(np.pi * x_0) + 1 / 2) * t - x
+    def g_prime(x_0, t, x):
+        return 1 + np.pi * np.cos(np.pi * x_0) * t
+    no_prob = x <= 0.2
+    prob_is_left = np.logical_and(x <= x_s, x > 1.0)
+    prob_is_right = x > x_s
+    init_val = 0.5 * prob_is_left + 1.5 * prob_is_right + (0) * no_prob
+    x_0 = sc.newton(g, x0=init_val, fprime=g_prime, args=(t, x), tol=1e-5, maxiter=100)
+    return initial_values(x_0)
 
 
 def apply_bc(u, which_bc):
@@ -420,14 +434,14 @@ def ErrorOrder(err, NN):
 if __name__ == "__main__":
     ## setup
     cfl = 0.5
-    tend = 1.0
+    tend = 1.5/np.pi
 
-    xleft = -2
+    xleft = 0
     xright = 2
 
 
-    which_bc = "neumann"
-    # which_bc = "periodic"
+    # which_bc = "neumann"
+    which_bc = "periodic"
 
 
     iordert = 2
@@ -437,11 +451,11 @@ if __name__ == "__main__":
     # icase 1: "upwind", "godunov", "lax_friedrichs", "rusanov", "lax_wendroff", "enquist_osher", roe
     # icase 2: "beam-warming"
     # icase 3: "lax_friedrichs_m", "rusanov_m", "godunov_m", "enquist_osher_m", "roe_m"
-    ischeme = "roe_m"
+    ischeme = "rusanov_m"
     islope = "minmod"
     # "zero", "minmod", "superbee", "mc", "vanleer"
 
-    ii = np.arange(2, 5)
+    ii = np.arange(2, 9)
     NN = 10 * 2 ** ii
 
     L1_ErrorStore = np.zeros(len(NN))
@@ -548,6 +562,35 @@ if __name__ == "__main__":
     plt.ylabel("error")
     plt.legend()
     plt.show()
+
+    print("L1 average convergence rate:", np.polyfit(np.log(mesh_widths), np.log(L1_ErrorStore), 1)[0])
+    print("L2 average convergence rate:", np.polyfit(np.log(mesh_widths), np.log(L2_ErrorStore), 1)[0])
+    print("Linf average convergence rate:", np.polyfit(np.log(mesh_widths), np.log(L8_ErrorStore), 1)[0])
+
+    print(f"N={NN[0] + 1}")
+    print(f"L1 Error at N={NN[0] + 1}: {L1_ErrorStore[0]}")
+    print(f"L2 Error  at N={NN[0] + 1}: {L2_ErrorStore[0]}")
+
+    print(f"Linf Error at N={NN[0] + 1}: {L8_ErrorStore[0]}")
+    rates_l1 = []
+    rates_l2 = []
+    rates_linf = []
+    precision = 4
+    for i, N in enumerate(NN[1:]):
+        print(f"N={N}")
+        print(f"L1 Error at N={N+1}:", L1_ErrorStore[i + 1])
+        print(f"L2 Error  at N={N+1}:", L2_ErrorStore[i + 1])
+        print(f"Linf Error at N={N+1}:", L8_ErrorStore[i + 1])
+        rate_l1 = np.polyfit(np.log(mesh_widths[i:i + 2]), np.log(L1_ErrorStore[i:i + 2]), 1)[0]
+        rate_l2 = np.polyfit(np.log(mesh_widths[i:i + 2]), np.log(L2_ErrorStore[i:i + 2]), 1)[0]
+        rate_linf = np.polyfit(np.log(mesh_widths[i:i + 2]), np.log(L8_ErrorStore[i:i + 2]), 1)[0]
+        rates_l1.append(np.round(rate_l1, precision))
+        rates_l2.append(np.round(rate_l2, precision))
+        rates_linf.append(np.round(rate_linf, precision))
+
+        print(f"L1 local convergence rate at N={N+1} :", rate_l1)
+        print(f"L2 local convergence rate  at N={N+1}:", rate_l2)
+        print(f"Linf local  convergence rate at N={N+1}:", rate_linf)
 
 
 
