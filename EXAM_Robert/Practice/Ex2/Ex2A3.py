@@ -3,36 +3,34 @@ import matplotlib.pyplot as plt
 from scipy import integrate
 
 
-exercise_name = "Ex_2.3a"
+exercise_name = "Ex2A3"
 save_plots = True
-compute_rates = True
+compute_rates = False
 
-tend = 1
-x_left = 0
-x_right = 1
+tend = 2
+x_left = -10
+x_right = 10
 cfl = 0.4  # = dt/dx
-which_bc = "periodic"
-which_schemes =  ["lax_wendroff_advection", "upwind"]
-# central, upwind, lax_wendroff_advection, lax_wendroff_general
+which_bc = "neumann" # neumann, periodic
+which_schemes = ["lax_wendroff_advection", "upwind"] # central, upwind, lax_wendroff_advection, lax_wendroff_general
 
-mesh_sizes = np.array([40, 80, 160, 320, 640]) #np.array([100]) 
-mesh_index_to_plot = 2
-
+mesh_sizes = np.array([100]) #np.array([40, 80, 160, 320, 640]) #
+mesh_index_to_plot = 0
 
 #only for Riemann problem
 u_L = -1
 u_R = 1
 
-#only for linear advection
+#linear advection
 a = 2
 
 
 def initial_values(x):
     #return 2 * (x <= 0.5) + 1 * (x > 0.5)
     # return np.sin(np.pi * x)
-    return np.sin(2*np.pi*x)
+    #return np.sin(2*np.pi*x)
     # Bugers' equation
-    # return np.array(np.where(x < 0, u_L, u_R), dtype=float)
+    return np.array(np.where(x < 0, u_L, u_R), dtype=float)
     # return np.sin(np.pi*x) + 0.5
 
 
@@ -123,7 +121,6 @@ def general_lax_wendroff_step(u_left, u_middle, u_right, dt, dx):
     
 
 
-
 err_l1 = {}
 err_l2 = {}
 err_linf = {}
@@ -187,9 +184,9 @@ for which_scheme in which_schemes:
         fig.savefig(f"{exercise_name}_{which_scheme}_mesh_comparison.png")
     plt.show()
 
-
 if not compute_rates:
     exit()
+
 
 rates_l1 = {}
 rates_l2 = {}

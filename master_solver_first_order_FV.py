@@ -2,22 +2,21 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import integrate
 
-
 exercise_name = "Ex_2.3a"
-save_plots = True
+save_plots = False
 compute_rates = True
 
-tend = 1
+tend = 0.5/np.pi
 x_left = 0
-x_right = 1
+x_right = 2
 cfl = 0.4  # = dt/dx
 which_bc = "periodic"
-which_schemes =  ["lax_wendroff_advection", "upwind"]
-# central, upwind, lax_wendroff_advection, lax_wendroff_general
+#which_bc = "neumann"
+which_schemes =  ["enquist_osher"]#["roe", "lax_friedrichs", "rusanov", "enquist_osher", "godunov", "lax_wendroff"]
+# lax_friedrichs, rusanov, enquist_osher, godunov, roe, lax_wendroff
 
 mesh_sizes = np.array([40, 80, 160, 320, 640]) #np.array([100]) 
-mesh_index_to_plot = 2
-
+mesh_index_to_plot = -1
 
 #only for Riemann problem
 u_L = -1
@@ -26,34 +25,37 @@ u_R = 1
 #only for linear advection
 a = 2
 
+def init(dx, x):
+    u0_ = np.zeros(len(x))
+    for j in range(len(x)):
+        u0_[j] = 1 / dx * integrate.quad(initial_values, x[j] - 0.5 * dx, x[j] + 0.5 * dx)[0]  # Midpoint rule
+    return u0_
+
 
 def initial_values(x):
     #return 2 * (x <= 0.5) + 1 * (x > 0.5)
     # return np.sin(np.pi * x)
-    return np.sin(2*np.pi*x)
     # Bugers' equation
     # return np.array(np.where(x < 0, u_L, u_R), dtype=float)
-    # return np.sin(np.pi*x) + 0.5
-
+    return np.sin(np.pi*x) + 0.5
 
 
 def f(u):
     # Linear advection:
-    return a*u
+    # return a*u
     # Burgers' equation:
-    # return u ** 2 / 2
+    return u ** 2 / 2
 
 
 def f_prime(u):
     # Linear advection:
-    return a*np.ones_like(u)
+    # return a*np.ones_like(u)
     # Burgers' equation:
-    # return u
-
+    return u
 
 def u_exact(x, t):
     # Linear advection:
-    return initial_values(x - a*t)
+    # return initial_values(x - a*t)
     # Burgers' equation shock: (u_L > u_R)
     # s = (f(u_L) - f(u_R)) / (u_L - u_R)
     # return np.where((x < s*t), u_L, u_R)
@@ -68,6 +70,25 @@ def u_exact(x, t):
     #         u[i] = u_R
     # return u
 
+    ##NETWON
+    import scipy.optimize as sc
+    t = tend
+    x_s = 1 + 1 / 2 * t # Shock position
+
+    def g(x_0, t, x):
+        return x_0 + (np.sin(np.pi * x_0) + 1 / 2) * t - x
+
+
+    def g_prime(x_0, t, x):
+        return 1 + np.pi * np.cos(np.pi * x_0) * t
+
+    no_prob = x <= 0.2
+    prob_is_left = np.logical_and(x <= x_s, x > 1.0)
+    prob_is_right = x > x_s
+    init_val = 0.5 * prob_is_left + 1.5 * prob_is_right + (0) * no_prob
+    x_0 = sc.newton(g, x0=init_val, fprime=g_prime, args=(t, x), tol=1e-5, maxiter=100)
+    return initial_values(x_0)
+
 
 def apply_bc(u, which_bc):
     if which_bc == "neumann":
@@ -81,48 +102,73 @@ def apply_bc(u, which_bc):
     return u
 
 
-def three_point_scheme_step(u_left, u_middle, u_right, dt, dx, which_scheme):
-    if which_scheme == "central":
-        return u_middle - a * dt / (2 * dx) * (u_right - u_left)
-    elif which_scheme == "upwind":
-        if a > 0:
-            return u_middle - a * dt / dx * (u_middle - u_left)
-        else:
-            return u_middle - a * dt / dx * (u_right - u_middle)
-    elif which_scheme == "lax_wendroff_advection":
-        return u_middle - a * dt / (2 * dx) * (u_right - u_left) + (a * dt / dx) ** 2 / 2 * (
-                u_right - 2 * u_middle + u_left)
-    elif which_scheme == "lax_wendroff_general":
-        return general_lax_wendroff_step(u_left, u_middle, u_right, dt, dx)
-    #elif which_scheme == "beam_warming":
+def get_flux(u_left, u_right, which_scheme):
+    if which_scheme == "lax_friedrichs":
+        return lax_friedrichs_flux(u_left, u_right)
+    elif which_scheme == "rusanov":
+        return rusanov_flux(u_left, u_right)
+    elif which_scheme == "enquist_osher":
+        return enquist_osher_flux(u_left, u_right)
+    elif which_scheme == "godunov":
+        return godunov_flux(u_left, u_right)
+    elif which_scheme == "roe":
+        return roe_flux(u_left, u_right)
+    elif which_scheme == "lax_wendroff":
+        return lax_wendroff_flux(u_left, u_right)
     else:
         raise NotImplementedError(f"{which_scheme} scheme isn't implemented.")
 
-def general_lax_wendroff_step(u_left, u_middle, u_right, dt, dx):
-    #a_j_ph := a_{j+1/2}
-    #a_j_mh := a_{j-1/2}
-
-    #a_j_ph = f_prime((u_middle+u_right)/2)
-    #a_j_pm = f_prime((u_left+u_middle)/2)
-
-    #alternative
-    #take care of division by zero
-    div_by_0 = np.isclose(u_right, u_middle)
-    a_j_ph = np.zeros_like(u_middle)
-    a_j_ph[div_by_0] = f_prime(u_middle[div_by_0])
-    a_j_ph[~div_by_0] = (f(u_right[~div_by_0])-f(u_middle[~div_by_0]))/(u_right[~div_by_0]-u_middle[~div_by_0])
-
-    a_j_mh = np.zeros_like(u_middle)
-    div_by_0 = np.isclose(u_left, u_middle)
-    a_j_mh[div_by_0] = f_prime(u_middle[div_by_0])
-    a_j_mh[~div_by_0] = (f(u_middle[~div_by_0])-f(u_left[~div_by_0]))/(u_middle[~div_by_0]-u_left[~div_by_0])
-
-    return u_middle - dt / (2 * dx) *(f(u_right) - f(u_left)) + (dt /dx)**2 /2 * (
-            a_j_ph * (f(u_right) - f(u_middle)) - a_j_mh * (f(u_middle) - f(u_left))
-        ) 
-    
 
 
+def lax_friedrichs_flux(u_left, u_right):
+    return 0.5 * (f(u_left) + f(u_right)) - 0.5 * (u_right - u_left) / cfl
+
+
+def rusanov_flux(u_left, u_right):
+    return (f(u_left) + f(u_right)) / 2 - np.max([np.abs(f_prime(u_left)), np.abs(f_prime(u_right))]) / 2 * (
+            u_right - u_left)
+
+
+def enquist_osher_flux(u_left, u_right):
+    integrand = lambda theta: np.abs(f_prime(theta))
+    integrals = np.zeros_like(u_left)
+    for i in range(len(integrals)):
+        integrals[i] = integrate.quad(integrand, u_left[i], u_right[i])[0]
+    return (f(u_left) + f(u_right)) / 2 - integrals/2
+
+
+def godunov_flux(u_left, u_right):
+    fh = np.zeros(len(u_left))
+    for i in range(len(u_left)):
+        if u_left[i] <= u_right[i]:
+            uu = np.linspace(u_left[i], u_right[i], 100)
+            ff = f(uu) * np.ones(len(uu))
+            fh[i] = min(ff)
+        else:
+            uu = np.linspace(u_left[i], u_right[i], 100)
+            ff = f(uu) * np.ones(len(uu))
+            fh[i] = max(ff)
+    return fh
+
+
+def roe_flux(u_left, u_right):
+    A_hat = np.zeros(len(u_left))
+    for j in range(len(u_left)):
+        if np.abs(u_left[j] - u_right[j]) < 1e-7:
+            A_hat[j] = f_prime(u_left[j])
+        else:
+            A_hat[j] = (f(u_right[j]) - f(u_left[j])) / (u_right[j] - u_left[j])
+    fh = np.where(A_hat >= 0, f(u_left), f(u_right))
+    return fh
+
+def lax_wendroff_flux(u_left, u_right):
+    A_hat = np.zeros(len(u_left))
+    for j in range(len(u_left)):
+        if np.abs(u_left[j] - u_right[j]) < 1e-7:
+            A_hat[j] = f_prime(u_left[j])
+        else:
+            A_hat[j] = (f(u_right[j]) - f(u_left[j])) / (u_right[j] - u_left[j])
+    return (f(u_left) + f(u_right)) / 2 - A_hat*cfl/2 * (f(u_right) - f(u_left))
 
 err_l1 = {}
 err_l2 = {}
@@ -142,14 +188,13 @@ for which_scheme in which_schemes:
         dt = cfl * dx
 
         x = np.linspace(x_left, x_right, N)
-        u = initial_values(x)
+        u = init(dx, x)
         u = np.concatenate([[u[0]], u, [u[-1]]])  # Add ghost cells
         for _ in range(int(tend / dt)):
             u = apply_bc(u, which_bc)
-            u_left = u[:-2]
-            u_middle = u[1:-1]
-            u_right = u[2:]
-            u[1:-1] = three_point_scheme_step(u_left, u_middle, u_right, dt, dx, which_scheme)
+            F_j = get_flux(u[:-1], u[1:], which_scheme)
+            F_j_diff = F_j[1:] - F_j[:-1]
+            u[1:-1] = u[1:-1] - dt / dx * F_j_diff
 
         u = u[1:-1]  # Strip ghost cells
 
@@ -157,6 +202,7 @@ for which_scheme in which_schemes:
         err_l1[which_scheme][i] = np.sum(np.abs(u - u_exact(x, tend))) * dx
         err_l2[which_scheme][i] = np.sqrt(np.sum((np.abs(u - u_exact(x, tend))) ** 2) * dx)
         err_linf[which_scheme][i] = np.max(np.abs(u - u_exact(x, tend)))
+
 
 # Plotting:
 fig, ax = plt.subplots()
