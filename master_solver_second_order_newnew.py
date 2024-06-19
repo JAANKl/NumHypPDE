@@ -446,11 +446,11 @@ if __name__ == "__main__":
     iordert = 1
     # iordert 1: euler
     # iordert 2: rk2
-    icase = 3
+    icase = 2
     # icase 1: "upwind", "godunov", "lax_friedrichs", "rusanov", "lax_wendroff", "enquist_osher", roe
     # icase 2: "beam-warming"
     # icase 3: "lax_friedrichs_m", "rusanov_m", "godunov_m", "enquist_osher_m", "roe_m"
-    ischeme = "godunov_m"
+    ischeme = "beam-warming"
     islope = "minmod"
     # "zero", "minmod", "superbee", "mc", "vanleer"
 

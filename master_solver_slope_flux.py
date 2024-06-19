@@ -6,14 +6,14 @@ exercise_name = "Ex_2.3a"
 save_plots = False
 compute_rates = True
 
-tend = 0.5/np.pi
+tend = 1
 x_left = 0
-x_right = 2
+x_right = 1
 cfl = 0.4  # = dt/dx
 which_bc = "periodic"
 #which_bc = "neumann"
-which_schemes =  ["godunov"]#["roe", "lax_friedrichs", "rusanov", "enquist_osher", "godunov", "lax_wendroff"]
-# lax_friedrichs, rusanov, enquist_osher, godunov, roe, lax_wendroff
+which_schemes =  ["lax_wendroff"]#["upwind", "lax_wendroff", "beam_warming", "minmod", "superbee", "mc", "vanleer"]
+# upwind, lax_wendroff, beam_warming, minmod, superbee, mc, vanleer
 
 mesh_sizes = np.array([40, 80, 160, 320, 640]) #np.array([100]) 
 mesh_index_to_plot = -1
@@ -34,28 +34,28 @@ def init(dx, x):
 
 def initial_values(x):
     #return 2 * (x <= 0.5) + 1 * (x > 0.5)
-    # return np.sin(np.pi * x)
+    return np.sin(2*np.pi * x)
     # Bugers' equation
     # return np.array(np.where(x < 0, u_L, u_R), dtype=float)
-    return np.sin(np.pi*x) + 0.5
+    # return np.sin(np.pi*x) + 0.5
 
 
 def f(u):
     # Linear advection:
-    # return a*u
+    return a*u
     # Burgers' equation:
-    return u ** 2 / 2
+    # return u ** 2 / 2
 
 
 def f_prime(u):
     # Linear advection:
-    # return a*np.ones_like(u)
+    return a*np.ones_like(u)
     # Burgers' equation:
-    return u
+    # return u
 
 def u_exact(x, t):
     # Linear advection:
-    # return initial_values(x - a*t)
+    return initial_values(x - a*t)
     # Burgers' equation shock: (u_L > u_R)
     # s = (f(u_L) - f(u_R)) / (u_L - u_R)
     # return np.where((x < s*t), u_L, u_R)
@@ -70,114 +70,60 @@ def u_exact(x, t):
     #         u[i] = u_R
     # return u
 
-    ##NETWON
-    import scipy.optimize as sc
-    t = tend
-    x_s = 1 + 1 / 2 * t # Shock position
-
-    def g(x_0, t, x):
-        return x_0 + (np.sin(np.pi * x_0) + 1 / 2) * t - x
-
-
-    def g_prime(x_0, t, x):
-        return 1 + np.pi * np.cos(np.pi * x_0) * t
-
-    no_prob = x <= 0.2
-    prob_is_left = np.logical_and(x <= x_s, x > 1.0)
-    prob_is_right = x > x_s
-    init_val = 0.5 * prob_is_left + 1.5 * prob_is_right + (0) * no_prob
-    x_0 = sc.newton(g, x0=init_val, fprime=g_prime, args=(t, x), tol=1e-5, maxiter=100)
-    return initial_values(x_0)
+    
 
 
 def apply_bc(u, which_bc):
     if which_bc == "neumann":
-        u[0] = u[1]  # Apply Neumann boundary conditions
-        u[-1] = u[-2]
+        u[0:2] = u[2]  # Apply Neumann boundary conditions
+        u[-2:] = u[-3]
     elif which_bc == "periodic":
-        u[0] = u[-2]  # Apply Periodic boundary conditions
-        u[-1] = u[1]
+        u[0:2] = u[-5:-3]  # Apply Periodic boundary conditions
+        u[-2:] = u[3:5]
     else:
         raise NotImplementedError("Only neumann and periodic boundary conditions possible")
     return u
 
+#upwind, lax_wendroff, beam_warming, minmod, superbee, mc, vanleer
+def upwind_flux_limiter(u_left, u_middle, u_right):
+    return np.zeros_like(u_left)
 
-def get_flux(u_left, u_right, which_scheme):
-    if which_scheme == "lax_friedrichs":
-        return lax_friedrichs_flux(u_left, u_right)
-    elif which_scheme == "rusanov":
-        return rusanov_flux(u_left, u_right)
-    elif which_scheme == "enquist_osher":
-        return enquist_osher_flux(u_left, u_right)
-    elif which_scheme == "godunov":
-        return godunov_flux(u_left, u_right)
-    elif which_scheme == "roe":
-        return roe_flux(u_left, u_right)
+def lax_wendroff_flux_limiter(u_left, u_middle, u_right):
+    return np.ones_like(u_left)
+
+def beam_warming_flux_limiter(u_left, u_middle, u_right):
+    return (u_middle-u_left)/(u_right-u_middle)
+
+def minmod_flux_limiter(u_left, u_middle, u_right):
+    return np.zeros_like(u_left)
+
+def superbee_flux_limiter(u_left, u_middle, u_right):
+    return np.zeros_like(u_left)
+
+def mc_flux_limiter(u_left, u_middle, u_right):
+    return np.zeros_like(u_left)
+
+def vanleer_flux_limiter(u_left, u_middle, u_right):
+    return np.zeros_like(u_left)
+
+
+def flux_limiter_phi(u_left, u_middle, u_right, which_scheme):
+    if which_scheme == "upwind":
+        return upwind_flux_limiter(u_left, u_middle, u_right)
     elif which_scheme == "lax_wendroff":
-        return lax_wendroff_flux(u_left, u_right)
+        return lax_wendroff_flux_limiter(u_left, u_middle, u_right)
+    elif which_scheme == "beam_warming":
+        return beam_warming_flux_limiter(u_left, u_middle, u_right)
+    elif which_scheme == "minmod":
+        return minmod_flux_limiter(u_left, u_middle, u_right)
+    elif which_scheme == "superbee":
+        return superbee_flux_limiter(u_left, u_middle, u_right)
+    elif which_scheme == "mc":
+        return mc_flux_limiter(u_left, u_middle, u_right)
+    elif which_scheme == "vanleer":
+        return vanleer_flux_limiter(u_left, u_middle, u_right)
     else:
         raise NotImplementedError(f"{which_scheme} scheme isn't implemented.")
-
-
-
-def lax_friedrichs_flux(u_left, u_right):
-    return 0.5 * (f(u_left) + f(u_right)) - 0.5 * (u_right - u_left) / cfl
-
-
-def rusanov_flux(u_left, u_right):
-    return (f(u_left) + f(u_right)) / 2 - np.max([np.abs(f_prime(u_left)), np.abs(f_prime(u_right))]) / 2 * (
-            u_right - u_left)
-
-
-def enquist_osher_flux(u_left, u_right):
-    integrand = lambda theta: np.abs(f_prime(theta))
-    integrals = np.zeros_like(u_left)
-    for i in range(len(integrals)):
-        integrals[i] = integrate.quad(integrand, u_left[i], u_right[i])[0]
-    return (f(u_left) + f(u_right)) / 2 - integrals/2
-
-def godunov_flux(u_left, u_right):
-    ## advection equation
-    #is_smaller = (u_left <= u_right)
-    #fh = is_smaller * np.minimum(f(u_left), f(u_right)) + (1 - is_smaller) * np.maximum(f(u_left), f(u_right))
-
-    ## burgers's equation
-    # a = np.maximum(u_left, 0)
-    # b = np.minimum(u_right, 0)
-    # fh = np.maximum(f(a), f(b))
-
-    ## general case for f(u)
-    fh = np.zeros(len(u_left))
-    for i in range(len(u_left)):
-        if u_left[i] <= u_right[i]:
-            uu = np.linspace(u_left[i], u_right[i], 100)
-            ff = f(uu) * np.ones(len(uu))
-            fh[i] = min(ff)
-        else:
-            uu = np.linspace(u_left[i], u_right[i], 100)
-            ff = f(uu) * np.ones(len(uu))
-            fh[i] = max(ff)
-    return fh
-
-
-def roe_flux(u_left, u_right):
-    A_hat = np.zeros(len(u_left))
-    for j in range(len(u_left)):
-        if np.abs(u_left[j] - u_right[j]) < 1e-7:
-            A_hat[j] = f_prime(u_left[j])
-        else:
-            A_hat[j] = (f(u_right[j]) - f(u_left[j])) / (u_right[j] - u_left[j])
-    fh = np.where(A_hat >= 0, f(u_left), f(u_right))
-    return fh
-
-def lax_wendroff_flux(u_left, u_right):
-    A_hat = np.zeros(len(u_left))
-    for j in range(len(u_left)):
-        if np.abs(u_left[j] - u_right[j]) < 1e-7:
-            A_hat[j] = f_prime(u_left[j])
-        else:
-            A_hat[j] = (f(u_right[j]) - f(u_left[j])) / (u_right[j] - u_left[j])
-    return (f(u_left) + f(u_right)) / 2 - A_hat*cfl/2 * (f(u_right) - f(u_left))
 
 err_l1 = {}
 err_l2 = {}
@@ -198,14 +144,18 @@ for which_scheme in which_schemes:
 
         x = np.linspace(x_left, x_right, N)
         u = init(dx, x)
-        u = np.concatenate([[u[0]], u, [u[-1]]])  # Add ghost cells
+        u = np.concatenate([[u[0]],[u[0]], u, [u[-1]], [u[-1]]])  # Add ghost cells
         for _ in range(int(tend / dt)):
             u = apply_bc(u, which_bc)
-            F_j = get_flux(u[:-1], u[1:], which_scheme)
+            u_left = u[:-2]
+            u_middle = u[1:-1]
+            u_right = u[2:]
+            phi = flux_limiter_phi(u_left, u_middle, u_right, which_scheme)
+            F_j = a*(u_middle + phi/2*(u_right - u_left))
             F_j_diff = F_j[1:] - F_j[:-1]
-            u[1:-1] = u[1:-1] - dt / dx * F_j_diff
+            u[2:-2] = u[2:-2] - dt / dx * F_j_diff[:-1]
 
-        u = u[1:-1]  # Strip ghost cells
+        u = u[2:-2]  # Strip ghost cells
 
         numerical_solutions[which_scheme].append(u)
         err_l1[which_scheme][i] = np.sum(np.abs(u - u_exact(x, tend))) * dx
