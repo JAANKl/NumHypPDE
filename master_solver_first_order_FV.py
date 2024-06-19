@@ -12,7 +12,7 @@ x_right = 2
 cfl = 0.4  # = dt/dx
 which_bc = "periodic"
 #which_bc = "neumann"
-which_schemes =  ["enquist_osher"]#["roe", "lax_friedrichs", "rusanov", "enquist_osher", "godunov", "lax_wendroff"]
+which_schemes =  ["godunov"]#["roe", "lax_friedrichs", "rusanov", "enquist_osher", "godunov", "lax_wendroff"]
 # lax_friedrichs, rusanov, enquist_osher, godunov, roe, lax_wendroff
 
 mesh_sizes = np.array([40, 80, 160, 320, 640]) #np.array([100]) 
@@ -138,6 +138,16 @@ def enquist_osher_flux(u_left, u_right):
 
 
 def godunov_flux(u_left, u_right):
+    ## advection equation
+    #is_smaller = (u_left <= u_right)
+    #fh = is_smaller * np.minimum(f(u_left), f(u_right)) + (1 - is_smaller) * np.maximum(f(u_left), f(u_right))
+
+    ## burgers's equation
+    # a = np.maximum(u_left, 0)
+    # b = np.minimum(u_right, 0)
+    # fh = np.maximum(f(a), f(b))
+
+    ## general case for f(u)
     fh = np.zeros(len(u_left))
     for i in range(len(u_left)):
         if u_left[i] <= u_right[i]:

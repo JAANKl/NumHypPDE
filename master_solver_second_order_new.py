@@ -17,9 +17,9 @@ u_R = -0.5
 
 def initial_values(x):
     # return 2 * (x <= 0.5) + 1 * (x > 0.5)
-    # return np.sin(2 * np.pi * x)
+    return np.sin(2 * np.pi * x)
     # Bugers' equation
-    return np.where(x < 0, u_L, u_R)
+    # return np.where(x < 0, u_L, u_R)
     # return np.sin(np.pi*x) + 0.5
 
 
@@ -28,24 +28,24 @@ a = 1
 
 def flux(u):
     # Linear advection:
-    # return a*u
+    return a*u
     # Burgers' equation:
-    return u ** 2 / 2
+    # return u ** 2 / 2
 
 
 def fluxp(u):
     # Linear advection:
-    # return a*np.ones_like(u)
+    return a*np.ones_like(u)
     # Burgers' equation:
-    return u
+    # return u
 
 
 def exactu(t, x):
     # Linear advection:
-    # return initial_values(x - a*t)
+    return initial_values(x - a*t)
     # Burgers' equation shock: (u_L > u_R)
-    s = (flux(u_L) - flux(u_R)) / (u_L - u_R)
-    return np.where((x < s*t), u_L, u_R)
+    # s = (flux(u_L) - flux(u_R)) / (u_L - u_R)
+    # return np.where((x < s*t), u_L, u_R)
     # Burgers' equation rarefaction: (u_L < u_R)
     # u = np.zeros(len(x))
     # for i in range(len(x)):
@@ -426,8 +426,8 @@ if __name__ == "__main__":
     xright = 2
 
 
-    which_bc = "neumann"
-    # which_bc = "periodic"
+    # which_bc = "neumann"
+    which_bc = "periodic"
 
 
     iordert = 2
@@ -437,7 +437,7 @@ if __name__ == "__main__":
     # icase 1: "upwind", "godunov", "lax_friedrichs", "rusanov", "lax_wendroff", "enquist_osher", roe
     # icase 2: "beam-warming"
     # icase 3: "lax_friedrichs_m", "rusanov_m", "godunov_m", "enquist_osher_m", "roe_m"
-    ischeme = "roe_m"
+    ischeme = "godunov_m"
     islope = "minmod"
     # "zero", "minmod", "superbee", "mc", "vanleer"
 
