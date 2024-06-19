@@ -24,10 +24,12 @@ plt.show()
 t = 1.5/np.pi
 x_s = 1+1/2*t
 
-no_prob = x<=0.2
-prob_is_left = np.logical_and(x <= x_s, x>1.0)
+# no_prob = x<=0.2
+# prob_is_left = np.logical_and(x <= x_s, x>1.0)
+prob_is_left = x <= x_s
 prob_is_right = x > x_s
-init_val = 0.5*prob_is_left+1.5*prob_is_right+(0)*no_prob
+# init_val = 0.5*prob_is_left+1.5*prob_is_right+(0)*no_prob
+init_val = 0*prob_is_left+2*prob_is_right
 x_0 = sc.newton(f, x0=init_val,fprime=f_prime, args=(t, x),tol=1e-5, maxiter=100)
 
     

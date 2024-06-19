@@ -206,8 +206,8 @@ def u_plus(u, dx, sigma_func):
 
 
 tend = 1.0
-x_left = -2
-x_right = 2
+x_left = -1
+x_right = 1
 cfl = 0.5  # = dt/dx
 # which_bc = "neumann"
 which_bc = "periodic"
@@ -215,8 +215,8 @@ which_scheme = "rusanov"
 # lax_friedrichs, rusanov, enquist_osher, godunov, roe, lax_wendroff
 # TODO: implement upwind scheme (or is this the same as roe?)
 slope_limiters = {"minmod": sigma_minmod, "mc": sigma_mc, "van_leer": sigma_van_leer, "superbee": sigma_superbee}
-slope = slope_limiters["mc"]
-mesh_sizes = np.array([32, 64, 128, 258, 512])
+slope = slope_limiters["minmod"]
+mesh_sizes = np.array([32, 64, 128, 258, 512, 1024])
 err_l1 = np.zeros(n := len(mesh_sizes))
 err_l2 = np.zeros(n)
 err_linf = np.zeros(n)
