@@ -64,10 +64,9 @@ def exactu(t, x):
         return x_0 + (np.sin(np.pi * x_0) + 1 / 2) * t - x
     def g_prime(x_0, t, x):
         return 1 + np.pi * np.cos(np.pi * x_0) * t
-    no_prob = x <= 0.2
-    prob_is_left = np.logical_and(x <= x_s, x > 1.0)
+    prob_is_left = x <= x_s
     prob_is_right = x > x_s
-    init_val = 0.5 * prob_is_left + 1.5 * prob_is_right + (0) * no_prob
+    init_val = 0 * prob_is_left + 2 * prob_is_right
     x_0 = sc.newton(g, x0=init_val, fprime=g_prime, args=(t, x), tol=1e-5, maxiter=100)
     return initial_values(x_0)
 
