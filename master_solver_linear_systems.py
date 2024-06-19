@@ -9,33 +9,66 @@ save_plots = True
 compute_rates = True
 
 tend = 1
-x_left = 0
-x_right = 1
+x_left = -2
+x_right = 2
 ## setup
 cfl = 0.4
 
 # which_bc = "neumann"
 which_bc = "periodic"
 
-which_schemes =  ["lax_friedrich"]#["lax_friedrichs", "rusanov", "godunov", "enquist_osher", "roe"]#["rusanov"]
+which_schemes =  ["godunov"]#["lax_friedrichs", "rusanov", "godunov", "enquist_osher", "roe"]
 # lax_friedrichs, rusanov, godunov, enquist_osher, roe
-which_limiters = ["zero", "minmod", "superbee", "mc", "vanleer"]
+which_limiters = ["minmod"]#["zero", "minmod", "superbee", "mc", "vanleer"]
 # zero, minmod, superbee, mc, vanleer, minmod, upwind, downwind
 
 time_integration_method = "euler" #makes all schemes first order!
-#time_integration_method = "rk2"
+# time_integration_method = "rk2"
 
 mesh_sizes = np.array([40, 80, 160, 320, 640]) #np.array([100]) 
 mesh_index_to_plot = 1
 
-#only for Riemann problem
-u_L = -1
-u_R = 1
+# linear hyperbolic system
 
-#only for linear advection
-a = 2
+U_L = np.array([[0],
+                [1]])
+U_R = np.array([[1], 
+                [1]])
+
+
+A = np.array([[0, 4], 
+              [1, 0]])
+
+R = np.array([[2, 2],
+              [-1, 1]])
+R_inv = 1/4*np.array([[1, -2],
+                 [1, 2]])
+Lambda = np.diag([-2, 2])
 
 ####################################################################
+m = 2 # number of dimensions
+
+lambdas = Lambda.diagonal()
+Lambda_abs = np.abs(Lambda)
+
+U_star = R@(np.array([[1, 0], [0, 0]])@R_inv@U_R + (np.array([[0, 0], [0, 1]])@R_inv@U_L))
+print(U_star)
+#assert that eigenvalues are increasing
+assert Lambda[0, 0] <= Lambda[1, 1], "Eigenvalues are not increasing"
+#assert R has orthogonal columns, but not necessarily normalized, only true if symmetric
+if np.allclose(A, A.T):
+    assert np.allclose((R.T @ R)[0, 1]**2 + (R.T @ R)[1, 0]**2, 0), "R does not have orthogonal columns"
+assert np.allclose(np.linalg.det(A), np.linalg.det(Lambda)), "Wrong eigenvalues"
+
+if np.allclose(R @ R_inv, np.eye(2)):
+    print("R, R_inv are inverses")
+else:
+    print("INCORRECT: R, R_inv are not inverses")
+
+if np.allclose(R @ Lambda @ R_inv, A):
+    print("R, Lambda and R_inv are correct")
+else:
+    print("INCORRECT: R, Lambda and R_inv are not correct")
 
 if time_integration_method == "euler":
     iordert = 1
@@ -50,43 +83,18 @@ def init(dx, x):
         u0_[j] = 1 / dx * integrate.quad(initial_values, x[j], x[j+1])[0]  # Midpoint rule
     return u0_
 
+
 def initial_values(x):
-    # return 2 * (x <= 0.5) + 1 * (x > 0.5)
-    return np.sin(2 * np.pi * x)
-    # Bugers' equation
-    # return np.array(np.where(x < 0, u_L, u_R), dtype=float)
-    # return np.sin(np.pi*x) + 0.5
-
-def flux(u):
-    # Linear advection:
-    return a*u
-    # Burgers' equation:
-    # return u ** 2 / 2
-
-
-def fluxp(u):
-    # Linear advection:
-    return a*np.ones_like(u)
-    # Burgers' equation:
-    # return u
+    if isinstance(x, (int, float)):
+        x = np.array([x])
+    return ((U_L) * np.array(x > 0)[None, :] + (U_R) * np.array(x <= 0)[None, :]).T
 
 
 def u_exact(t, x):
-    # Linear advection:
-    return initial_values(x - a*t)
-    # Burgers' equation shock: (u_L > u_R)
-    # s = (flux(u_L) - flux(u_R)) / (u_L - u_R)
-    # return np.where((x < s*t), u_L, u_R)
-    # Burgers' equation rarefaction: (u_L < u_R)
-    # u = np.zeros(len(x))
-    # for i in range(len(x)):
-    #     if x[i] <= fluxp(u_L) * t:
-    #         u[i] = u_L
-    #     elif x[i] <= fluxp(u_R) * t:
-    #         u[i] = x[i] / t
-    #     else:
-    #         u[i] = u_R
-    # return u
+    if isinstance(x, (int, float)):
+        x = np.array([x])
+    return ((U_L) * np.array(x < lambdas[0] * t)[None, :] + (U_star) * (np.array(
+        lambdas[0] * t <= x) * np.array(x < lambdas[1] * t))[None, :] + (U_R) * np.array(x >= lambdas[1] * t)[None, :]).T
 
 
 def apply_bc(u, which_bc):
@@ -101,7 +109,7 @@ def apply_bc(u, which_bc):
     return u
 
 
-def getflux(ischeme, islope, dt, dx, flux, fluxp, u):
+def getflux(ischeme, islope, dt, dx, u):
     if ischeme == "lax_friedrichs":
         fh = lax_friedrichs(islope, dx, u)
     elif ischeme == "rusanov":
@@ -187,34 +195,9 @@ def enquist_osher(islope, dx, u):
 
 
 def godunov(islope, dx, u):
-    f = flux(u) * np.ones(len(u))
-    fp = fluxp(u) * np.ones(len(u))
     um, up = getslope(dx, u, islope)
 
-    fh = np.zeros(len(um))
-    for i in range((len(um))):
-        ## advection equation
-        if um[i] <= up[i]:
-            fh[i] = min(flux(um[i]), flux(up[i]))
-        else:
-            fh[i] = max(flux(um[i]), flux(up[i]))
-
-        # burgers's equation
-        #    a = max(um[i], 0)
-        #    b = min(up[i], 0)
-        #    fh[i] = max(flux(a), flux(b))
-
-    # fh = np.zeros(len(um))
-    # for i in range(len(um)):
-    #     if um[i] <= up[i]:
-    #         uu = np.linspace(um[i], up[i], 100)
-    #         ff = flux(uu) * np.ones(len(uu))
-    #         fh[i] = min(ff)
-    #     else:
-    #         uu = np.linspace(um[i], up[i], 100)
-    #         ff = flux(uu) * np.ones(len(uu))
-    #         fh[i] = max(ff)
-    return fh
+    return (0.5* A @ (um + up).T - 0.5 * R @ Lambda_abs @ R_inv @ (up - um).T).T
 
 
 def minmod(a, b):
@@ -322,14 +305,14 @@ def rk2(k, dt, u, rhs):
 
 
 def L1err(dx, uc, uex):
-    u_diff = abs(uc[0:-1] - uex[0:-1])
+    u_diff = np.sum(np.abs(uc[0:-1] - uex[0:-1]), axis=1)
     err = sum(u_diff) * dx
     return err
 
 
 def L2err(dx, uc, uex):
-    u_diff = abs(uc[0:-1] - uex[0:-1])
-    err = sum(np.square(u_diff)) * dx
+    u_diff = np.sum(np.abs(uc[0:-1] - uex[0:-1])**2, axis=1)
+    err = sum(u_diff) * dx
     err = math.sqrt(err)
     return err
 
@@ -381,8 +364,8 @@ for ischeme in which_schemes:
             dt = cfl * dx
 
             ## initialize
-            uc = np.zeros((iordert, N_ + 4))  # 2 ghost points for the boundary on the left and 2 ghost points on the right.
-            uc[0, 2:-2] = init(dx, xh)
+            uc = np.zeros((iordert, N_ + 4, m))  # 2 ghost points for the boundary on the left and 2 ghost points on the right.
+            uc[0, 2:-2] = initial_values(xi)#init(dx, xh)
 
             ## exact solution
             uex = np.zeros(N_)
@@ -405,7 +388,7 @@ for ischeme in which_schemes:
                     apply_bc(uc[0, :], which_bc)
 
                     ## spatial discretization
-                    rhs = getflux(ischeme, islope, dt, dx, flux, fluxp, uc[0, :])
+                    rhs = getflux(ischeme, islope, dt, dx, uc[0, :])
                     euler_forward(dt, uc, rhs)
                 elif iordert == 2:
                     for k in range(iordert):
@@ -413,7 +396,7 @@ for ischeme in which_schemes:
                         apply_bc(uc[k, :], which_bc)
 
                         ## spatial discretization
-                        rhs = getflux(ischeme, islope, dt, dx, flux, fluxp, uc[k, :])
+                        rhs = getflux(ischeme, islope, dt, dx, uc[k, :])
 
                         rk2(k, dt, uc, rhs)
             apply_bc(uc[0, :], which_bc)
@@ -440,12 +423,15 @@ for ischeme in which_schemes:
 
 
 # Plotting all schemes together:
-fig, ax = plt.subplots()
-ax: plt.Axes
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 7))
+ax1: plt.Axes
+ax2: plt.Axes
 for ischeme in which_schemes:
     for islope in which_limiters:
         which_scheme = (ischeme, islope)
-        ax.plot(np.linspace(x_left, x_right, mesh_sizes[mesh_index_to_plot]+1), numerical_solutions_dict[which_scheme][mesh_index_to_plot], '-',
+        ax1.plot(np.linspace(x_left, x_right, mesh_sizes[mesh_index_to_plot]+1), numerical_solutions_dict[which_scheme][mesh_index_to_plot][:, 0], '-',
+                    label=f"{which_scheme}", linewidth=1)
+        ax2.plot(np.linspace(x_left, x_right, mesh_sizes[mesh_index_to_plot]+1), numerical_solutions_dict[which_scheme][mesh_index_to_plot][:, 1], '-',
                     label=f"{which_scheme}", linewidth=1)
 ax.set_xlabel("x")
 ax.set_ylabel("u(x)")
