@@ -8,25 +8,25 @@ show_plots = False
 save_plots = True
 compute_rates = True
 
-tend = 1
+tend = .3
 x_left = -2
 x_right = 2
 ## setup
 cfl = 0.4
 
-# which_bc = "neumann"
-which_bc = "periodic"
+which_bc = "neumann"
+# which_bc = "periodic"
 
-which_schemes =  ["godunov"]#["lax_friedrichs", "rusanov", "godunov", "enquist_osher", "roe"]
+which_schemes =  ["rusanov"]#["lax_friedrichs", "rusanov", "godunov", "enquist_osher", "roe"]
 # lax_friedrichs, rusanov, godunov, enquist_osher, roe
-which_limiters = ["minmod"]#["zero", "minmod", "superbee", "mc", "vanleer"]
+which_limiters = ["zero", "minmod", "superbee", "mc", "vanleer"]#["minmod"]#["zero", "minmod", "superbee", "mc", "vanleer"]
 # zero, minmod, superbee, mc, vanleer, minmod, upwind, downwind
 
-time_integration_method = "euler" #makes all schemes first order!
-# time_integration_method = "rk2"
+# time_integration_method = "euler" #makes all schemes first order!
+time_integration_method = "rk2"
 
 mesh_sizes = np.array([40, 80, 160, 320, 640]) #np.array([100]) 
-mesh_index_to_plot = 1
+mesh_index_to_plot = -1
 
 # linear hyperbolic system
 
@@ -50,6 +50,7 @@ m = 2 # number of dimensions
 
 lambdas = Lambda.diagonal()
 Lambda_abs = np.abs(Lambda)
+lambda_max = np.max(Lambda_abs)
 
 U_star = R@(np.array([[1, 0], [0, 0]])@R_inv@U_R + (np.array([[0, 0], [0, 1]])@R_inv@U_L))
 print(U_star)
@@ -87,7 +88,7 @@ def init(dx, x):
 def initial_values(x):
     if isinstance(x, (int, float)):
         x = np.array([x])
-    return ((U_L) * np.array(x > 0)[None, :] + (U_R) * np.array(x <= 0)[None, :]).T
+    return ((U_R) * np.array(x > 0)[None, :] + (U_L) * np.array(x <= 0)[None, :]).T
 
 
 def u_exact(t, x):
@@ -111,7 +112,7 @@ def apply_bc(u, which_bc):
 
 def getflux(ischeme, islope, dt, dx, u):
     if ischeme == "lax_friedrichs":
-        fh = lax_friedrichs(islope, dx, u)
+        fh = lax_friedrichs(islope, dx, dt, u)
     elif ischeme == "rusanov":
         fh = rusanov(islope, dx, u)
     elif ischeme == "godunov":
@@ -144,12 +145,11 @@ def getslope(dx, u, islope):
         sys.exit("ERROR: this is not defined here.")
 
 
-def lax_friedrichs(islope, dx, u):
+def lax_friedrichs(islope, dx, dt, u):
     um, up = getslope(dx, u, islope)
 
-    ump = np.hstack((np.abs(fluxp(um)), np.abs(fluxp(up))))
-    alp = max(ump)
-    fh = 0.5 * (flux(um) + flux(up)) - 0.5 * alp * (up - um)
+
+    fh = (0.5 * A@(um.T + up.T) - 0.5 * dx/dt * (up.T - um.T)).T
     return fh
 
 
@@ -168,15 +168,8 @@ def roe(islope, dx, u):
 def rusanov(islope, dx, u):
     um, up = getslope(dx, u, islope)
 
-    ## advection equation
-    # alp = np.maximum(np.abs(fluxp(um)), np.abs(fluxp(up)))
-    # fh = 0.5 * (flux(um) + flux(up)) - 0.5 * alp * (up - um)
 
-    ## burgers' equation
-    #    alp = np.maximum(np.absolute(um), np.absolute(up))
-    #    fh = 0.5*(flux(um)+flux(up))-0.5*alp*(up-um)
-
-    fh = (flux(um) + flux(up)) / 2 - np.max([np.abs(fluxp(um)), np.abs(fluxp(up))]) / 2 * (up - um)
+    fh = (0.5 * A@(um.T + up.T) - 0.5 * lambda_max* (up.T - um.T)).T
     return fh
 
 def enquist_osher(islope, dx, u):
@@ -247,17 +240,21 @@ def superbee_slope(dx, u):
     sigmal = minmod(2 * (u[1:-1] - u[0:-2]) / dx, (u[2:] - u[1:-1]) / dx)
     sigmar = minmod((u[1:-1] - u[0:-2]) / dx, 2 * (u[2:] - u[1:-1]) / dx)
 
-    sigma = np.zeros(len(sigmal))
+    sigma = np.zeros((len(sigmal), m)) #m=dimension
     for i in range(len(sigmal)):
-        if sigmal[i] > 0.0 and sigmar[i] > 0.0:
-            sigma[i] = max(sigmal[i], sigmar[i])
-        elif sigmal[i] < 0.0 and sigmar[i] < 0.0:
-            sigma[i] = -max(abs(sigmal[i]), abs(sigmar[i]))
-        else:
-            sigma[i] = 0.0
+        
+        # if sigmal[i] > 0.0 and sigmar[i] > 0.0:
+        #     sigma[i] = max(sigmal[i], sigmar[i])
+        # elif sigmal[i] < 0.0 and sigmar[i] < 0.0:
+        #     sigma[i] = -max(abs(sigmal[i]), abs(sigmar[i]))
+        # else:
+        #     sigma[i] = 0.0
+        ifcase = (sigmal[i]> 0)*(sigmar[i]>0)
+        elifcase = (sigmal[i]< 0)*(sigmar[i]<0)
+        sigma[i] = ifcase*np.maximum(sigmal[i], sigmar[i]) - elifcase*np.maximum(np.abs(sigmal[i]), np.abs(sigmar[i]))
 
-    um = np.zeros(len(sigma) - 1)
-    up = np.zeros(len(sigma) - 1)
+
+
     um = u[1:-2] + sigma[0:-1] * dx * 0.5
     up = u[2:-1] + sigma[1:] * (-dx) * 0.5
     return um, up
@@ -266,8 +263,6 @@ def superbee_slope(dx, u):
 def mc_slope(dx, u):
     sigma = minmod2(2 * (u[2:] - u[1:-1]) / dx, (u[2:] - u[0:-2]) / 2 / dx, 2 * (u[1:-1] - u[0:-2]) / dx)
 
-    um = np.zeros(len(sigma) - 1)
-    up = np.zeros(len(sigma) - 1)
     um = u[1:-2] + sigma[0:-1] * dx * 0.5
     up = u[2:-1] + sigma[1:] * (-dx) * 0.5
     return um, up
@@ -280,8 +275,9 @@ def vanleer_slope(dx, u):
     #    for i in range(len(a)):
     #        r = a[i]/(b[i]+1e-10)
     #        sigma[i] = (r+abs(r))/(1+abs(r))
-
-    r = (u[2:] - u[1:-1]) / (u[1:-1] - u[0:-2] + 1e-10)
+    too_close = np.abs(u[1:-1] - u[0:-2]) < 1e-10
+    denominator = (1-too_close)*(u[1:-1] - u[0:-2]) + too_close*(1e-10)
+    r = (u[2:] - u[1:-1]) / denominator
     sigma = (r + np.abs(r)) / (1 + np.abs(r))
 
     um = np.zeros(len(sigma) - 1)
@@ -433,12 +429,18 @@ for ischeme in which_schemes:
                     label=f"{which_scheme}", linewidth=1)
         ax2.plot(np.linspace(x_left, x_right, mesh_sizes[mesh_index_to_plot]+1), numerical_solutions_dict[which_scheme][mesh_index_to_plot][:, 1], '-',
                     label=f"{which_scheme}", linewidth=1)
-ax.set_xlabel("x")
-ax.set_ylabel("u(x)")
-ax.plot(x := np.linspace(x_left, x_right, mesh_sizes[mesh_index_to_plot]+1), u_exact(tend, x), label="exact solution", linewidth=1,
+ax1.set_xlabel("x")
+ax1.set_ylabel("u(x)")
+ax1.plot(x := np.linspace(x_left, x_right, mesh_sizes[mesh_index_to_plot]+1), u_exact(tend, x)[:, 0], label="exact solution", linewidth=1,
          color="black")
-ax.set_title(f"{mesh_sizes[mesh_index_to_plot]} Points")
-ax.legend()
+ax1.set_title(f"$u_1$, {mesh_sizes[mesh_index_to_plot]} Points")
+ax1.legend()
+ax2.set_xlabel("x")
+ax2.set_ylabel("u(x)")
+ax2.plot(x := np.linspace(x_left, x_right, mesh_sizes[mesh_index_to_plot]+1), u_exact(tend, x)[:, 1], label="exact solution", linewidth=1,
+         color="black")
+ax2.set_title(f"$u_2$, {mesh_sizes[mesh_index_to_plot]} Points")
+ax2.legend()
 if save_plots:
     fig.savefig(f"{exercise_name}_plot_mesh_N={mesh_sizes[mesh_index_to_plot]}.png")
 
@@ -449,14 +451,23 @@ if show_plots:
 for ischeme in which_schemes:
     for islope in which_limiters:
         which_scheme = (ischeme, islope)
-        fig, ax = plt.subplots()
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 7))
+        ax1: plt.Axes
+        ax2: plt.Axes
         for i, N in enumerate(mesh_sizes):
-            ax.scatter(np.linspace(x_left, x_right, N+1), numerical_solutions_dict[which_scheme][i], label=f"{N} mesh points", s=1)
-        ax.set_xlabel("x")
-        ax.set_ylabel("u(x)")
-        ax.plot(x := np.linspace(x_left, x_right, mesh_sizes[-1]+1), u_exact(tend, x), label="exact solution", color="black")
-        ax.set_title(f"{which_scheme}")
-        ax.legend()
+            ax1.scatter(np.linspace(x_left, x_right, N+1), numerical_solutions_dict[which_scheme][i][:, 0], label=f"{N} mesh points", s=1)
+            ax2.scatter(np.linspace(x_left, x_right, N+1), numerical_solutions_dict[which_scheme][i][:, 1], label=f"{N} mesh points", s=1)
+
+        ax1.set_xlabel("x")
+        ax1.set_ylabel("u(x)")
+        ax1.plot(x := np.linspace(x_left, x_right, mesh_sizes[-1]+1), u_exact(tend, x)[:, 0], label="exact solution", color="black")
+        ax1.set_title(f"$u_1$, {which_scheme}")
+        ax1.legend()
+        ax2.set_xlabel("x")
+        ax2.set_ylabel("u(x)")
+        ax2.plot(x := np.linspace(x_left, x_right, mesh_sizes[-1]+1), u_exact(tend, x)[:, 1], label="exact solution", color="black")
+        ax2.set_title(f"$u_2$, {which_scheme}")
+        ax2.legend()
         if save_plots:
             fig.savefig(f"{exercise_name}_{which_scheme}_mesh_comparison.png")
         if show_plots:

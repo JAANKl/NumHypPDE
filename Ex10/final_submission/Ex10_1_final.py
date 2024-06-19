@@ -133,7 +133,7 @@ def u_plus(u, dx, sigma_func):
     return u - sigma_func(u, dx) * dx / 2
 
 
-tend = 1
+tend = 0.3
 mesh_sizes = np.array([100])
 err_l1 = np.zeros(n := len(mesh_sizes))
 err_l2 = np.zeros(n)
